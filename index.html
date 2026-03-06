@@ -425,13 +425,13 @@ tr.detail-row.hidden { display: none; }
     </div>
   </div>
 
-  <div class="slabel">WGRAJ PLIK SCORECARD</div>
+  <div class="slabel">WGRAJ PLIKI SCORECARD</div>
   <div class="import-zone" id="drop-zone">
-    <input type="file" accept=".csv" onchange="handleFileInput(event)" />
-    <div class="import-icon">📄</div>
-    <div class="import-title">Przeciągnij plik CSV lub kliknij</div>
-    <div class="import-sub">Plik scorecard z AFT-X<br>Format: <code>current-scorecard-YYYYMMDD-HHMM-XXXX.csv</code></div>
-    <div class="import-hint">Format nazwy: <code>current-scorecard-YYYYMMDD-HHMM-dzienna.csv</code> lub <code>…-nocna.csv</code> — zmiana wykrywana automatycznie</div>
+    <input type="file" accept=".csv" multiple onchange="handleFileInput(event)" />
+    <div class="import-icon">📂</div>
+    <div class="import-title">Przeciągnij pliki CSV lub kliknij</div>
+    <div class="import-sub">Możesz zaznaczyć wiele plików naraz (Ctrl+klik)<br>lub przeciągnąć cały folder z OneDrive</div>
+    <div class="import-hint">Format nazwy: <code>…-dzienna.csv</code> lub <code>…-nocna.csv</code> — zmiana i data wykrywane automatycznie · duplikaty pomijane</div>
   </div>
   <div id="import-msg"></div>
 
@@ -729,8 +729,9 @@ function getActiveData() {
 // CSV IMPORT
 // ============================================================
 function handleFileInput(e) {
-  const file = e.target.files[0];
-  if (file) processCSV(file);
+  const files = Array.from(e.target.files).filter(f => f.name.toLowerCase().endsWith('.csv'));
+  if (files.length) processFiles(files);
+  e.target.value = ''; // reset so same files can be re-selected
 }
 
 function setupDragDrop() {
@@ -739,67 +740,105 @@ function setupDragDrop() {
   zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
   zone.addEventListener('drop', ev => {
     ev.preventDefault(); zone.classList.remove('drag');
-    const file = ev.dataTransfer.files[0];
-    if (file) processCSV(file);
+    const files = Array.from(ev.dataTransfer.files).filter(f => f.name.toLowerCase().endsWith('.csv'));
+    if (files.length) processFiles(files);
   });
 }
 
-function processCSV(file) {
-  // Auto-detect shift from filename: *-dzienna.csv or *-nocna.csv
+// Process multiple CSV files at once
+function processFiles(files) {
+  // Sort files by date in filename before processing
+  files.sort((a, b) => {
+    const da = extractDateSortKey(a.name), db = extractDateSortKey(b.name);
+    if (da !== db) return da.localeCompare(db);
+    // Same date: dzienna before nocna
+    const aN = a.name.toLowerCase(), bN = b.name.toLowerCase();
+    const aShift = aN.includes('-nocna') ? 1 : 0;
+    const bShift = bN.includes('-nocna') ? 1 : 0;
+    return aShift - bShift;
+  });
+
+  let loaded = 0, skipped = 0, errors = [];
+  let pending = files.length;
+
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const result = parseSingleCSV(file, e.target.result);
+        if (result.skipped) {
+          skipped++;
+        } else {
+          // Deduplicate: skip if same fileName + shift already in history
+          const exists = history.some(h => h.fileName === file.name && h.shift === result.shift);
+          if (exists) {
+            skipped++;
+          } else {
+            history.push({ date: result.dateStr, shift: result.shift, data: result.parsed, avg: result.avg, fileName: file.name });
+            allData = allData.filter(r => !(r.shift === result.shift && r.fileDate === file.name));
+            allData = allData.concat(result.parsed);
+            loaded++;
+          }
+        }
+      } catch(err) {
+        errors.push(`${file.name}: ${err.message}`);
+      }
+      pending--;
+      if (pending === 0) {
+        // All files processed
+        sortHistory();
+        saveToStorage();
+        // Activate last shift
+        if (history.length) setActiveShift(history[history.length-1].shift);
+        renderImportHistory();
+        populateDateFilter();
+        document.getElementById('no-data-msg').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = 'block';
+        updateShiftDateInfo();
+
+        let msg = `✓ Załadowano ${loaded} nowych zmian`;
+        if (skipped > 0) msg += ` · pominięto ${skipped} (duplikaty lub puste)`;
+        if (errors.length) msg += ` · błędy: ${errors.join(', ')}`;
+        showMsg('import-msg', msg, errors.length ? 'err' : 'ok');
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+function parseSingleCSV(file, text) {
   const nameLC = file.name.toLowerCase();
-  if (nameLC.includes('-dzienna')) {
-    selectImportShift('day');
-  } else if (nameLC.includes('-nocna')) {
-    selectImportShift('night');
-  }
-  // importShift is now set correctly (auto or manual)
+  // Auto-detect shift
+  let shift = importShift;
+  if (nameLC.includes('-dzienna')) shift = 'day';
+  else if (nameLC.includes('-nocna')) shift = 'night';
+  // Update selector to match last file processed
+  selectImportShift(shift);
 
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const rows = parseCSV(e.target.result);
-      if (!rows.length) throw new Error('Plik pusty lub błędny format');
-      const parsed = rows.map(r => ({
-        fullName: r.fullName || r.login || '—',
-        login: r.login || '',
-        uph: parseFloat(r.directPickRateRounded) || 0,
-        uphRaw: parseFloat(r.directPickRate) || 0,
-        quantityPicked: parseInt(r.quantityPicked) || 0,
-        percentDirectTime: r.percentDirectTime || '—',
-        daysSinceHired: parseInt(r.daysSinceHired) || 0,
-        managerName: r.managerName || '—',
-        noOfRejects: parseInt(r.noOfRejects) || 0,
-        recordStartTime: r.recordStartTime || '',
-        actualDirectTime: r.actualDirectTimeString || '—',
-        shift: importShift,
-        fileDate: file.name,
-      })).filter(r => r.quantityPicked > 0);
+  const rows = parseCSV(text);
+  if (!rows.length) return { skipped: true };
 
-      const dateStr = extractDate(file.name, rows);
-      const avg = Math.round(parsed.reduce((s,r)=>s+r.uph,0)/parsed.length);
-      const autoDetected = nameLC.includes('-dzienna') || nameLC.includes('-nocna');
-      const shiftLabel = importShift === 'day' ? 'dzienna ☀' : 'nocna 🌙';
+  const parsed = rows.map(r => ({
+    fullName: r.fullName || r.login || '—',
+    login: r.login || '',
+    uph: parseFloat(r.directPickRateRounded) || 0,
+    uphRaw: parseFloat(r.directPickRate) || 0,
+    quantityPicked: parseInt(r.quantityPicked) || 0,
+    percentDirectTime: r.percentDirectTime || '—',
+    daysSinceHired: parseInt(r.daysSinceHired) || 0,
+    managerName: r.managerName || '—',
+    noOfRejects: parseInt(r.noOfRejects) || 0,
+    recordStartTime: r.recordStartTime || '',
+    actualDirectTime: r.actualDirectTimeString || '—',
+    shift,
+    fileDate: file.name,
+  })).filter(r => r.quantityPicked > 0);
 
-      history.push({ date: dateStr, shift: importShift, data: parsed, avg, fileName: file.name });
-      allData = allData.filter(r => !(r.shift === importShift && r.fileDate === file.name));
-      allData = allData.concat(parsed);
-      sortHistory();
-      saveToStorage();
-      setActiveShift(importShift);
+  if (!parsed.length) return { skipped: true };
 
-      showMsg('import-msg',
-        `✓ Załadowano ${parsed.length} pickerów · zmiana ${shiftLabel}${autoDetected ? ' (wykryto z nazwy pliku)' : ''} · śr. UPH: ${avg}`,
-        'ok');
-      renderImportHistory();
-      populateDateFilter();
-      document.getElementById('no-data-msg').style.display = 'none';
-      document.getElementById('dashboard-content').style.display = 'block';
-      updateShiftDateInfo();
-    } catch(err) {
-      showMsg('import-msg', '✗ Błąd: ' + err.message, 'err');
-    }
-  };
-  reader.readAsText(file, 'utf-8');
+  const dateStr = extractDate(file.name, rows);
+  const avg = Math.round(parsed.reduce((s,r)=>s+r.uph,0)/parsed.length);
+  return { parsed, dateStr, shift, avg, skipped: false };
 }
 
 function parseCSV(text) {
