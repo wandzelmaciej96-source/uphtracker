@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPH Tracker — Pick 3PL AFT-X</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Barlow+Condensed:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0d0e12;
+  --s1: #13141a;
+  --s2: #1a1b23;
+  --s3: #22232e;
+  --border: #2e2f3e;
+  --text: #e8e9f0;
+  --muted: #6b6c80;
+  --red: #e05050;
+  --yellow: #f0b840;
+  --green: #3ecf8e;
+  --blue: #4a9eff;
+  --purple: #a78bfa;
+  --night: #7c6fff;
+  --day: #ffb930;
+  --orange: #ff8c00;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Barlow Condensed', sans-serif; min-height: 100vh; }
+
+header {
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.logo-block { display: flex; flex-direction: column; }
+.logo-tag { font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 3px; margin-bottom: 3px; }
+.logo-title { font-size: 20px; font-weight: 900; letter-spacing: -0.5px; }
+.logo-title span { color: var(--yellow); }
+.header-kpis { display: flex; gap: 20px; flex-wrap: wrap; }
+.hkpi { display: flex; flex-direction: column; align-items: flex-end; }
+.hkpi-val { font-family: 'IBM Plex Mono', monospace; font-size: 22px; font-weight: 700; line-height: 1; }
+.hkpi-val.g { color: var(--green); }
+.hkpi-val.r { color: var(--red); }
+.hkpi-val.y { color: var(--yellow); }
+.hkpi-val.b { color: var(--blue); }
+.hkpi-label { font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-top: 2px; text-transform: uppercase; }
+
+/* SHIFT SELECTOR */
+.shift-bar {
+  background: var(--s2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 28px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.shift-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 2px; }
+.shift-btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 7px 18px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.shift-btn:hover { border-color: var(--text); color: var(--text); }
+.shift-btn.active-day { background: rgba(255,185,48,0.12); border-color: var(--day); color: var(--day); }
+.shift-btn.active-night { background: rgba(124,111,255,0.12); border-color: var(--night); color: var(--night); }
+.shift-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-day { background: var(--day); }
+.dot-night { background: var(--night); }
+.shift-date-info { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); margin-left: auto; }
+
+/* TABS */
+.tabs {
+  background: var(--s1);
+  border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+  display: flex;
+  gap: 0;
+}
+.tab {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 13px 18px;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
+
+main { max-width: 1280px; margin: 0 auto; padding: 24px 28px 60px; }
+.panel { display: none; }
+.panel.active { display: block; }
+
+.slabel {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slabel::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.slabel:first-child { margin-top: 0; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+
+.card { background: var(--s1); border: 1px solid var(--border); padding: 18px 20px; }
+.card-title { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+.card-val { font-family: 'IBM Plex Mono', monospace; font-size: 32px; font-weight: 700; line-height: 1; }
+.card-val.g { color: var(--green); }
+.card-val.r { color: var(--red); }
+.card-val.y { color: var(--yellow); }
+.card-val.b { color: var(--blue); }
+.card-val.p { color: var(--purple); }
+.card-sub { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+
+.chart-card { background: var(--s1); border: 1px solid var(--border); padding: 18px 20px; }
+.chart-title {
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 3px;
+  color: var(--muted); text-transform: uppercase; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.chart-title::before { content: ''; width: 3px; height: 12px; background: var(--yellow); display: block; }
+
+/* TABLE */
+.tbl-wrap { background: var(--s1); border: 1px solid var(--border); overflow: hidden; }
+.tbl-head-bar {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 3px; color: var(--muted);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.tbl-head-bar::before { content: ''; width: 3px; height: 12px; background: var(--blue); display: block; }
+.tbl-scroll { max-height: 420px; overflow-y: auto; }
+.tbl-scroll::-webkit-scrollbar { width: 3px; }
+.tbl-scroll::-webkit-scrollbar-thumb { background: var(--border); }
+table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+th { background: var(--s2); padding: 7px 14px; text-align: left; font-size: 9px; letter-spacing: 2px; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; }
+th:hover { color: var(--text); }
+td { padding: 7px 14px; border-bottom: 1px solid rgba(46,47,62,0.4); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--s2); }
+
+.badge { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 9px; padding: 2px 7px; letter-spacing: 1px; }
+.badge.ok { background: rgba(62,207,142,0.12); color: var(--green); border: 1px solid rgba(62,207,142,0.25); }
+.badge.warn { background: rgba(240,184,64,0.12); color: var(--yellow); border: 1px solid rgba(240,184,64,0.25); }
+.badge.crit { background: rgba(224,80,80,0.12); color: var(--red); border: 1px solid rgba(224,80,80,0.25); }
+.badge.top { background: rgba(74,158,255,0.12); color: var(--blue); border: 1px solid rgba(74,158,255,0.25); }
+
+.uph-bar-wrap { display: flex; align-items: center; gap: 6px; }
+.uph-bar-bg { width: 80px; height: 5px; background: var(--s3); }
+.uph-bar-fill { height: 100%; transition: width 0.3s; }
+
+/* SEARCH */
+.search-input {
+  background: var(--s2); border: 1px solid var(--border); color: var(--text);
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 6px 12px;
+  outline: none; width: 200px;
+}
+.search-input:focus { border-color: var(--yellow); }
+.search-input::placeholder { color: var(--muted); }
+
+/* IMPORT ZONE */
+.import-zone {
+  border: 2px dashed var(--border);
+  background: var(--s1);
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+}
+.import-zone:hover, .import-zone.drag { border-color: var(--yellow); background: rgba(240,184,64,0.04); }
+.import-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.import-icon { font-size: 36px; margin-bottom: 12px; }
+.import-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.import-sub { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.import-hint { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--yellow); margin-top: 10px; }
+
+/* SHIFT SELECTOR IN IMPORT */
+.shift-select-block {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+}
+.shift-select-title { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 3px; color: var(--muted); margin-bottom: 14px; }
+.shift-select-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+.shift-big-btn {
+  flex: 1; min-width: 180px;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+.shift-big-btn:hover { border-color: var(--text); }
+.shift-big-btn.sel-day { border-color: var(--day); background: rgba(255,185,48,0.06); }
+.shift-big-btn.sel-night { border-color: var(--night); background: rgba(124,111,255,0.06); }
+.sbtn-icon { font-size: 24px; margin-bottom: 6px; }
+.sbtn-name { font-size: 18px; font-weight: 800; margin-bottom: 2px; }
+.sbtn-hours { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+
+.btn {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 2px;
+  padding: 9px 18px; border: none; cursor: pointer; transition: all 0.15s;
+}
+.btn-primary { background: var(--yellow); color: #000; font-weight: 700; }
+.btn-primary:hover { background: #ffd060; }
+.btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+.btn-ghost:hover { border-color: var(--text); color: var(--text); }
+.btn-danger { background: transparent; border: 1px solid rgba(224,80,80,0.3); color: var(--red); font-size: 9px; padding: 3px 8px; }
+.btn-danger:hover { background: rgba(224,80,80,0.1); }
+
+/* DIAG CARDS */
+.diag-card { background: var(--s1); border: 1px solid var(--border); border-left: 3px solid; padding: 16px 18px; margin-bottom: 10px; }
+.diag-card.crit { border-left-color: var(--red); }
+.diag-card.warn { border-left-color: var(--yellow); }
+.diag-card.info { border-left-color: var(--blue); }
+.diag-card.ok { border-left-color: var(--green); }
+.diag-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+.diag-body { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.diag-action { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--yellow); margin-top: 8px; }
+
+/* HISTORY LIST */
+.hist-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.hist-item {
+  background: var(--s1); border: 1px solid var(--border);
+  padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.hist-shift-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.hist-info { flex: 1; }
+.hist-date { font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+.hist-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.hist-stats { font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-align: right; }
+.hist-uph { font-size: 18px; font-weight: 700; }
+
+/* MSG */
+.msg { font-family: 'IBM Plex Mono', monospace; font-size: 11px; padding: 10px 14px; margin-top: 10px; }
+.msg.ok { background: rgba(62,207,142,0.08); border: 1px solid rgba(62,207,142,0.2); color: var(--green); }
+.msg.err { background: rgba(224,80,80,0.08); border: 1px solid rgba(224,80,80,0.2); color: var(--red); }
+
+.flex-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* EXPANDABLE ROWS */
+.expand-btn {
+  width: 20px; height: 20px;
+  background: var(--s3); border: 1px solid var(--border);
+  color: var(--muted); font-size: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; flex-shrink: 0; font-family: monospace;
+  line-height: 1;
+}
+.expand-btn:hover { border-color: var(--yellow); color: var(--yellow); }
+.expand-btn.open { background: rgba(240,184,64,0.1); border-color: var(--yellow); color: var(--yellow); }
+tr.worker-row { cursor: pointer; }
+tr.worker-row:hover td { background: var(--s2); }
+tr.worker-row.short-time td { background: rgba(255,140,0,0.06); border-left: 2px solid var(--orange); }
+tr.worker-row.short-time:hover td { background: rgba(255,140,0,0.11); }
+tr.worker-row.expanded td { background: rgba(240,184,64,0.04); border-bottom: none; }
+tr.detail-row td { padding: 0; border-bottom: 1px solid var(--border); }
+tr.detail-row.hidden { display: none; }
+.detail-inner {
+  background: var(--s3);
+  border-left: 3px solid var(--yellow);
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease;
+}
+.detail-inner.open { max-height: 600px; }
+.detail-inner table { width: 100%; }
+.detail-inner th {
+  background: rgba(240,184,64,0.08);
+  font-size: 8px; letter-spacing: 2px; color: var(--yellow);
+  padding: 6px 14px; border-bottom: 1px solid rgba(240,184,64,0.15);
+}
+.detail-inner td { padding: 6px 14px; font-size: 11px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.detail-inner tr:last-child td { border-bottom: none; }
+.worker-avg-badge {
+  display: inline-block; font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; padding: 2px 8px; margin-left: 8px;
+  background: rgba(240,184,64,0.1); border: 1px solid rgba(240,184,64,0.3); color: var(--yellow);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-block">
+    <div class="logo-tag">AFT-X SCORECARD · 3PL AMAZON · PICKING</div>
+    <div class="logo-title">UPH <span>TRACKER</span></div>
+  </div>
+  <div class="header-kpis">
+    <div class="hkpi"><div class="hkpi-val y" id="h-avg">—</div><div class="hkpi-label">Śr. UPH</div></div>
+    <div class="hkpi"><div class="hkpi-val g" id="h-best">—</div><div class="hkpi-label">Top UPH</div></div>
+    <div class="hkpi"><div class="hkpi-val r" id="h-crit">—</div><div class="hkpi-label">Krytyczni</div></div>
+    <div class="hkpi"><div class="hkpi-val b" id="h-pickers">—</div><div class="hkpi-label">Pickerów</div></div>
+    <div class="hkpi"><div class="hkpi-val p" id="h-total">—</div><div class="hkpi-label">Łączny pick</div></div>
+  </div>
+</header>
+
+<div class="shift-bar">
+  <span class="shift-label">AKTYWNA ZMIANA:</span>
+  <button class="shift-btn" id="btn-day" onclick="setActiveShift('day')">
+    <div class="shift-dot dot-day"></div>☀ DZIENNA (06:00–18:00)
+  </button>
+  <button class="shift-btn" id="btn-night" onclick="setActiveShift('night')">
+    <div class="shift-dot dot-night"></div>🌙 NOCNA (18:00–06:00)
+  </button>
+  <div class="shift-date-info" id="shift-date-info">Brak załadowanych danych</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('dashboard',this)">Dashboard</div>
+  <div class="tab" onclick="switchTab('import',this)">Import CSV</div>
+  <div class="tab" onclick="switchTab('table',this)">Tabela pełna</div>
+  <div class="tab" onclick="switchTab('diagnosis',this)">Diagnoza</div>
+  <div class="tab" onclick="switchTab('history',this)">Historia zmian</div>
+</div>
+
+<main>
+
+<!-- DASHBOARD -->
+<div class="panel active" id="panel-dashboard">
+  <div id="no-data-msg" style="text-align:center;padding:60px 0">
+    <div style="font-size:40px;margin-bottom:16px">📂</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:8px">Brak danych</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Przejdź do zakładki <strong style="color:var(--yellow)">Import CSV</strong> i wgraj scorecard z AFT-X</div>
+    <button class="btn btn-primary" onclick="switchTab('import', document.querySelectorAll('.tab')[1])">→ IMPORTUJ DANE</button>
+  </div>
+  <div id="dashboard-content" style="display:none">
+    <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:4px">
+      <div style="flex:1">
+        <div class="slabel" style="margin-top:0">KPI ZMIANY</div>
+        <div class="grid5" id="kpi-cards"></div>
+      </div>
+      <div style="background:var(--s1);border:1px solid var(--border);padding:16px 20px;min-width:180px;flex-shrink:0">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--muted);margin-bottom:10px">CEL UPH</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input id="uph-goal-input" type="number" min="1" max="300" value="65"
+            style="background:var(--s2);border:1px solid var(--border);color:var(--yellow);font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:700;width:90px;padding:4px 10px;outline:none;text-align:center"
+            oninput="updateGoal()" onfocus="this.style.borderColor='var(--yellow)'" onblur="this.style.borderColor='var(--border)'" />
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);line-height:1.4">UPH<br>na zmianę</div>
+        </div>
+        <div id="goal-pct" style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="chart-card">
+        <div class="chart-title">Rozkład UPH — aktywni pickerzy (≥50 szt.)</div>
+        <canvas id="chart-dist" height="160"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Dzienna vs Nocna — porównanie dni</div>
+        <canvas id="chart-daynight" height="160"></canvas>
+      </div>
+    </div>
+    <div class="slabel">TOP 10 / BOTTOM 10 — AKTYWNI PICKERZY (≥50 szt.)</div>
+    <div class="grid2">
+      <div class="tbl-wrap">
+        <div class="tbl-head-bar"><span>🏆 TOP 10 PICKERÓW</span></div>
+        <table><thead><tr><th>#</th><th>PRACOWNIK</th><th>UPH</th><th>PICKED</th><th>STAŻ (DNI)</th></tr></thead>
+        <tbody id="top10"></tbody></table>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-head-bar"><span>⚠ BOTTOM 10 — DO UWAGI</span></div>
+        <table><thead><tr><th>#</th><th>PRACOWNIK</th><th>UPH</th><th>PICKED</th><th>STAŻ (DNI)</th></tr></thead>
+        <tbody id="bot10"></tbody></table>
+      </div>
+    </div>
+    <div class="slabel">FUNKCYJNI / NISKIE WOLUMENY — PONIŻEJ 50 SZT.</div>
+    <div class="tbl-wrap">
+      <div class="tbl-head-bar"><span>👤 Osoby z <50 szt. — pełnią dodatkowe funkcje, nie wliczani do rankingu</span></div>
+      <table><thead><tr><th>#</th><th>PRACOWNIK</th><th>UPH</th><th>PICKED</th><th>% DIRECT</th><th>STAŻ (DNI)</th></tr></thead>
+      <tbody id="non-pickers"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT -->
+<div class="panel" id="panel-import">
+  <div class="slabel">WYBIERZ ZMIANĘ</div>
+  <div class="shift-select-block">
+    <div class="shift-select-title">KTÓRA ZMIANA GENERUJE TEN SCORECARD?</div>
+    <div class="shift-select-btns">
+      <button class="shift-big-btn" id="sel-day" onclick="selectImportShift('day')">
+        <div class="sbtn-icon">☀️</div>
+        <div class="sbtn-name">DZIENNA</div>
+        <div class="sbtn-hours">06:00 → 18:00</div>
+      </button>
+      <button class="shift-big-btn" id="sel-night" onclick="selectImportShift('night')">
+        <div class="sbtn-icon">🌙</div>
+        <div class="sbtn-name">NOCNA</div>
+        <div class="sbtn-hours">18:00 → 06:00 (następnego dnia)</div>
+      </button>
+    </div>
+  </div>
+
+  <div class="slabel">WGRAJ PLIK SCORECARD</div>
+  <div class="import-zone" id="drop-zone">
+    <input type="file" accept=".csv" onchange="handleFileInput(event)" />
+    <div class="import-icon">📄</div>
+    <div class="import-title">Przeciągnij plik CSV lub kliknij</div>
+    <div class="import-sub">Plik scorecard z AFT-X<br>Format: <code>current-scorecard-YYYYMMDD-HHMM-XXXX.csv</code></div>
+    <div class="import-hint">Format nazwy: <code>current-scorecard-YYYYMMDD-HHMM-dzienna.csv</code> lub <code>…-nocna.csv</code> — zmiana wykrywana automatycznie</div>
+  </div>
+  <div id="import-msg"></div>
+
+  <div class="slabel" style="margin-top:24px">HISTORIA IMPORTÓW</div>
+  <div id="import-history-list">
+    <div style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:16px 0">Brak załadowanych danych</div>
+  </div>
+
+  <div class="slabel" style="margin-top:24px">BACKUP / PRZYWRACANIE DANYCH</div>
+  <div style="background:var(--s1);border:1px solid var(--border);padding:18px 20px;">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+      Dane są zapisywane automatycznie w przeglądarce (localStorage). Znikną jeśli wyczyścisz cache.<br>
+      Zrób eksport JSON regularnie jako backup — możesz go przywrócić w dowolnym momencie.
+    </div>
+    <div class="flex-row" style="gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="exportBackup()">⬇ EKSPORT JSON</button>
+      <div style="position:relative;display:inline-block">
+        <button class="btn btn-ghost" onclick="document.getElementById('restore-input').click()">⬆ IMPORTUJ BACKUP</button>
+        <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(event)" />
+      </div>
+      <button class="btn btn-danger" style="padding:9px 18px;font-size:10px" onclick="clearAllData()">✕ WYCZYŚĆ WSZYSTKIE DANE</button>
+    </div>
+    <div id="backup-msg"></div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:12px" id="storage-info"></div>
+  </div>
+
+<!-- FULL TABLE -->
+<div class="panel" id="panel-table">
+  <div class="slabel">PEŁNA TABELA DANYCH</div>
+  <div class="flex-row" style="margin-bottom:12px;gap:8px">
+    <input class="search-input" id="search-input" placeholder="Szukaj pracownika..." oninput="filterTable()" />
+    <select class="search-input" id="filter-date" onchange="filterTable()" style="width:auto">
+      <option value="">Wszystkie daty</option>
+    </select>
+    <select class="search-input" id="filter-shift-tbl" onchange="filterTable()" style="width:auto">
+      <option value="">Obie zmiany</option>
+      <option value="day">☀ Dzienna</option>
+      <option value="night">🌙 Nocna</option>
+    </select>
+    <select class="search-input" id="filter-status" onchange="filterTable()" style="width:auto">
+      <option value="">Wszyscy</option>
+      <option value="top">Osiąga cel</option>
+      <option value="ok">Blisko celu (75–99%)</option>
+      <option value="warn">Słaby (&lt;75% celu)</option>
+      <option value="func">Funkcyjni (&lt;50 szt.)</option>
+    </select>
+    <span id="table-count" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-left:auto"></span>
+  </div>
+  <div class="tbl-wrap">
+    <div class="tbl-scroll" style="max-height:680px">
+      <table id="main-table">
+        <thead>
+          <tr>
+            <th style="width:28px"></th>
+            <th onclick="sortBy('fullName')">PRACOWNIK ↕</th>
+            <th onclick="sortBy('shift')">ZMIANA</th>
+            <th onclick="sortBy('uph')">UPH ↕</th>
+            <th onclick="sortBy('quantityPicked')">PICKED ↕</th>
+            <th onclick="sortBy('actualDirectTime')">DIRECT TIME</th>
+            <th onclick="sortBy('noOfRejects')">REJECTS</th>
+            <th onclick="sortBy('daysSinceHired')">STAŻ ↕</th>
+            <th>STATUS</th>
+          </tr>
+        </thead>
+        <tbody id="main-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:8px">
+    ▶ Kliknij wiersz pracownika aby rozwinąć historię wszystkich zmian
+  </div>
+</div>
+
+<!-- DIAGNOSIS -->
+<div class="panel" id="panel-diagnosis">
+  <div class="slabel">AUTOMATYCZNA DIAGNOZA</div>
+  <div id="diag-output">
+    <div class="diag-card info"><div class="diag-title">ℹ Brak danych</div><div class="diag-body">Wgraj scorecard CSV, aby zobaczyć diagnozę.</div></div>
+  </div>
+  <div class="slabel">UPH vs STAŻ PRACY</div>
+  <div class="chart-card">
+    <div class="chart-title">Scatter — UPH vs dni od zatrudnienia</div>
+    <canvas id="chart-scatter" height="120"></canvas>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="panel" id="panel-history">
+  <div class="slabel">TREND DZIENNY — DZIENNA vs NOCNA</div>
+  <div class="chart-card">
+    <div class="chart-title">Średni UPH per zmiana — trend historyczny</div>
+    <canvas id="chart-history" height="100"></canvas>
+  </div>
+
+  <div class="slabel">PORÓWNANIE DZIEŃ PO DNIU</div>
+  <div class="tbl-wrap">
+    <div class="tbl-head-bar"><span>Każdy dzień — obie zmiany</span></div>
+    <table>
+      <thead><tr>
+        <th>DATA</th><th>DZIEŃ TYG.</th>
+        <th style="color:var(--day)">☀ DZIENNA UPH</th>
+        <th style="color:var(--day)">☀ PICKERÓW</th>
+        <th style="color:var(--night)">🌙 NOCNA UPH</th>
+        <th style="color:var(--night)">🌙 PICKERÓW</th>
+        <th>LEPSZA ZMIANA</th>
+        <th>RÓŻNICA</th>
+      </tr></thead>
+      <tbody id="day-compare-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="slabel">PODSUMOWANIE TYGODNIOWE (Nd–Sb)</div>
+  <div id="weekly-summary"></div>
+
+  <div class="slabel">LISTA WSZYSTKICH ZMIAN</div>
+  <div id="history-panel"></div>
+</div>
+
+</main>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let allData = [];
+let importShift = 'day';
+let activeShift = null;
+let sortKey = 'directPickRateRounded';
+let sortAsc = false;
+let history = [];
+let charts = {};
+let uphGoal = 65;
+
+const STORAGE_KEY = 'uph_tracker_data_v1';
+
+// ============================================================
+// LOCALSTORAGE PERSISTENCE
+// ============================================================
+function saveToStorage() {
+  try {
+    const payload = JSON.stringify({ history, uphGoal, savedAt: new Date().toISOString() });
+    localStorage.setItem(STORAGE_KEY, payload);
+    updateStorageInfo();
+  } catch(e) {
+    console.warn('localStorage save failed:', e);
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const payload = JSON.parse(raw);
+    if (!payload.history || !Array.isArray(payload.history)) return false;
+    history = payload.history;
+    uphGoal = payload.uphGoal || 65;
+    // Rebuild allData from history
+    allData = [];
+    history.forEach(h => allData = allData.concat(h.data));
+    // Sort history by date ascending
+    sortHistory();
+    return true;
+  } catch(e) {
+    console.warn('localStorage load failed:', e);
+    return false;
+  }
+}
+
+function updateStorageInfo() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) { document.getElementById('storage-info').textContent = 'Brak zapisanych danych'; return; }
+    const kb = (raw.length * 2 / 1024).toFixed(1);
+    const payload = JSON.parse(raw);
+    const saved = payload.savedAt ? new Date(payload.savedAt).toLocaleString('pl-PL') : '—';
+    document.getElementById('storage-info').textContent =
+      `Zapisano: ${saved} · Rozmiar: ${kb} KB · ${history.length} zmian w bazie`;
+  } catch(e) {}
+}
+
+function sortHistory() {
+  // Sort by date extracted from filename (YYYYMMDD), then by shift (day before night)
+  history.sort((a, b) => {
+    const da = extractDateSortKey(a.fileName), db = extractDateSortKey(b.fileName);
+    if (da !== db) return da.localeCompare(db);
+    // Same date: day before night
+    return a.shift === 'day' ? -1 : 1;
+  });
+}
+
+function extractDateSortKey(filename) {
+  // Extract YYYYMMDD from filename for sorting
+  const m = filename.match(/(\d{8})/);
+  return m ? m[1] : '00000000';
+}
+
+// ============================================================
+// BACKUP / RESTORE / CLEAR
+// ============================================================
+function exportBackup() {
+  const payload = JSON.stringify({ history, uphGoal, exportedAt: new Date().toISOString(), version: 1 }, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  a.href = url; a.download = `uph-tracker-backup-${date}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  showMsg('backup-msg', '✓ Backup pobrany', 'ok');
+}
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const payload = JSON.parse(e.target.result);
+      if (!payload.history || !Array.isArray(payload.history)) throw new Error('Nieprawidłowy format pliku backup');
+      history = payload.history;
+      uphGoal = payload.uphGoal || 65;
+      allData = [];
+      history.forEach(h => allData = allData.concat(h.data));
+      sortHistory();
+      saveToStorage();
+      document.getElementById('uph-goal-input').value = uphGoal;
+      // Activate last shift
+      if (history.length) setActiveShift(history[history.length-1].shift);
+      renderImportHistory(); populateDateFilter();
+      document.getElementById('no-data-msg').style.display = allData.length ? 'none' : 'block';
+      document.getElementById('dashboard-content').style.display = allData.length ? 'block' : 'none';
+      updateShiftDateInfo();
+      refreshDashboard(); refreshDiagnosis();
+      showMsg('backup-msg', `✓ Przywrócono ${history.length} zmian z backupu`, 'ok');
+    } catch(err) {
+      showMsg('backup-msg', '✗ Błąd: ' + err.message, 'err');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAllData() {
+  if (!confirm('Usunąć wszystkie dane? Tej operacji nie można cofnąć.')) return;
+  history = []; allData = [];
+  localStorage.removeItem(STORAGE_KEY);
+  renderImportHistory(); populateDateFilter();
+  document.getElementById('import-history-list').innerHTML =
+    '<div style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:16px 0">Brak załadowanych danych</div>';
+  document.getElementById('no-data-msg').style.display = 'block';
+  document.getElementById('dashboard-content').style.display = 'none';
+  document.getElementById('h-avg').textContent = '—';
+  document.getElementById('h-best').textContent = '—';
+  document.getElementById('h-crit').textContent = '—';
+  document.getElementById('h-pickers').textContent = '—';
+  document.getElementById('h-total').textContent = '—';
+  document.getElementById('diag-output').innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak danych</div><div class="diag-body">Wgraj scorecard CSV, aby zobaczyć diagnozę.</div></div>';
+  updateStorageInfo();
+  showMsg('backup-msg', '✓ Wszystkie dane usunięte', 'ok');
+}
+
+function updateGoal() {
+  const val = parseInt(document.getElementById('uph-goal-input').value);
+  if(val > 0 && val < 500) {
+    uphGoal = val;
+    saveToStorage();
+    refreshDashboard(); refreshDiagnosis();
+  }
+}
+
+// ============================================================
+// SHIFT LOGIC
+// ============================================================
+function selectImportShift(s) {
+  importShift = s;
+  document.getElementById('sel-day').className = 'shift-big-btn' + (s==='day' ? ' sel-day' : '');
+  document.getElementById('sel-night').className = 'shift-big-btn' + (s==='night' ? ' sel-night' : '');
+}
+selectImportShift('day');
+
+function setActiveShift(s) {
+  activeShift = s;
+  document.getElementById('btn-day').className = 'shift-btn' + (s==='day' ? ' active-day' : '');
+  document.getElementById('btn-night').className = 'shift-btn' + (s==='night' ? ' active-night' : '');
+  refreshDashboard();
+  refreshTable();
+  refreshDiagnosis();
+}
+
+function getActiveData() {
+  if (!activeShift) return allData;
+  return allData.filter(r => r.shift === activeShift);
+}
+
+// ============================================================
+// CSV IMPORT
+// ============================================================
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (file) processCSV(file);
+}
+
+function setupDragDrop() {
+  const zone = document.getElementById('drop-zone');
+  zone.addEventListener('dragover', ev => { ev.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', ev => {
+    ev.preventDefault(); zone.classList.remove('drag');
+    const file = ev.dataTransfer.files[0];
+    if (file) processCSV(file);
+  });
+}
+
+function processCSV(file) {
+  // Auto-detect shift from filename: *-dzienna.csv or *-nocna.csv
+  const nameLC = file.name.toLowerCase();
+  if (nameLC.includes('-dzienna')) {
+    selectImportShift('day');
+  } else if (nameLC.includes('-nocna')) {
+    selectImportShift('night');
+  }
+  // importShift is now set correctly (auto or manual)
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const rows = parseCSV(e.target.result);
+      if (!rows.length) throw new Error('Plik pusty lub błędny format');
+      const parsed = rows.map(r => ({
+        fullName: r.fullName || r.login || '—',
+        login: r.login || '',
+        uph: parseFloat(r.directPickRateRounded) || 0,
+        uphRaw: parseFloat(r.directPickRate) || 0,
+        quantityPicked: parseInt(r.quantityPicked) || 0,
+        percentDirectTime: r.percentDirectTime || '—',
+        daysSinceHired: parseInt(r.daysSinceHired) || 0,
+        managerName: r.managerName || '—',
+        noOfRejects: parseInt(r.noOfRejects) || 0,
+        recordStartTime: r.recordStartTime || '',
+        actualDirectTime: r.actualDirectTimeString || '—',
+        shift: importShift,
+        fileDate: file.name,
+      })).filter(r => r.quantityPicked > 0);
+
+      const dateStr = extractDate(file.name, rows);
+      const avg = Math.round(parsed.reduce((s,r)=>s+r.uph,0)/parsed.length);
+      const autoDetected = nameLC.includes('-dzienna') || nameLC.includes('-nocna');
+      const shiftLabel = importShift === 'day' ? 'dzienna ☀' : 'nocna 🌙';
+
+      history.push({ date: dateStr, shift: importShift, data: parsed, avg, fileName: file.name });
+      allData = allData.filter(r => !(r.shift === importShift && r.fileDate === file.name));
+      allData = allData.concat(parsed);
+      sortHistory();
+      saveToStorage();
+      setActiveShift(importShift);
+
+      showMsg('import-msg',
+        `✓ Załadowano ${parsed.length} pickerów · zmiana ${shiftLabel}${autoDetected ? ' (wykryto z nazwy pliku)' : ''} · śr. UPH: ${avg}`,
+        'ok');
+      renderImportHistory();
+      populateDateFilter();
+      document.getElementById('no-data-msg').style.display = 'none';
+      document.getElementById('dashboard-content').style.display = 'block';
+      updateShiftDateInfo();
+    } catch(err) {
+      showMsg('import-msg', '✗ Błąd: ' + err.message, 'err');
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function parseCSV(text) {
+  // Remove BOM
+  text = text.replace(/^\uFEFF/, '');
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).filter(l=>l.trim()).map(l => {
+    const vals = parseCSVLine(l);
+    const obj = {};
+    headers.forEach((h,i) => obj[h.trim()] = (vals[i]||'').replace(/^"|"$/g,'').trim());
+    return obj;
+  });
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i=0; i<line.length; i++) {
+    const c = line[i];
+    if (c==='"') { inQ=!inQ; }
+    else if (c===',' && !inQ) { result.push(cur); cur=''; }
+    else cur+=c;
+  }
+  result.push(cur);
+  return result;
+}
+
+function extractDate(filename, rows) {
+  // Try filename: scorecard-YYYYMMDD
+  const m = filename.match(/(\d{8})/);
+  if (m) {
+    const d = m[1];
+    return `${d.slice(6,8)}.${d.slice(4,6)}.${d.slice(0,4)}`;
+  }
+  // Try from data
+  if (rows[0] && rows[0].recordStartTime) {
+    return rows[0].recordStartTime.slice(0,10).split('-').reverse().join('.');
+  }
+  return new Date().toLocaleDateString('pl-PL');
+}
+
+function extractDate(filename, rows) {
+  const m = filename.match(/(\d{8})/);
+  if (m) {
+    const d = m[1];
+    return `${d.slice(6,8)}.${d.slice(4,6)}.${d.slice(0,4)}`;
+  }
+  if (rows.length && rows[0].recordStartTime) {
+    try { return rows[0].recordStartTime.slice(0,10).split('-').reverse().join('.'); } catch(e){}
+  }
+  return new Date().toLocaleDateString('pl-PL');
+}
+
+function updateShiftDateInfo() {
+  const active = getActiveData();
+  if (!active.length) { document.getElementById('shift-date-info').textContent = 'Brak danych'; return; }
+  const h = history.filter(x=>x.shift===activeShift);
+  const last = h[h.length-1];
+  document.getElementById('shift-date-info').textContent = last ? `${last.date} · ${active.length} pickerów` : `${active.length} pickerów`;
+}
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.innerHTML = `<div class="msg ${type}">${text}</div>`;
+}
+
+function renderImportHistory() {
+  const el = document.getElementById('import-history-list');
+  if (!history.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:16px 0">Brak załadowanych danych</div>';
+    return;
+  }
+  el.innerHTML = '<div class="hist-list">' + [...history].map((h, i) => `
+    <div class="hist-item">
+      <div class="hist-shift-dot" style="background:${h.shift==='day'?'var(--day)':'var(--night)'}"></div>
+      <div class="hist-info">
+        <div class="hist-date">${h.date} · ${h.shift==='day'?'☀ Dzienna (06–18)':'🌙 Nocna (18–06)'}</div>
+        <div class="hist-meta" style="font-family:'IBM Plex Mono',monospace;font-size:10px">${h.fileName}</div>
+        <div class="hist-meta">${h.data.length} pickerów · śr. UPH: <span style="color:${uphColor(h.avg)};font-weight:700">${h.avg}</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+        <div class="hist-uph" style="color:${uphColor(h.avg)};font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:700">${h.avg} UPH</div>
+        <button class="btn btn-danger" onclick="removeHistory(${i})" style="padding:5px 14px;font-size:10px">✕ USUŃ TEN IMPORT</button>
+      </div>
+    </div>
+  `).join('') + '</div>';
+}
+
+function removeHistory(i) {
+  const removed = history.splice(i, 1)[0];
+  allData = allData.filter(r => r.fileDate !== removed.fileName || r.shift !== removed.shift);
+  saveToStorage();
+  renderImportHistory();
+  // If no more data for active shift, clear header
+  const remaining = getActiveData();
+  if (!remaining.length) {
+    document.getElementById('h-avg').textContent = '—';
+    document.getElementById('h-best').textContent = '—';
+    document.getElementById('h-crit').textContent = '—';
+    document.getElementById('h-pickers').textContent = '—';
+    document.getElementById('h-total').textContent = '—';
+    document.getElementById('goal-pct').textContent = '';
+    document.getElementById('kpi-cards').innerHTML = '';
+    document.getElementById('top10').innerHTML = '';
+    document.getElementById('bot10').innerHTML = '';
+    document.getElementById('non-pickers').innerHTML = '';
+    if (!allData.length) {
+      document.getElementById('no-data-msg').style.display = 'block';
+      document.getElementById('dashboard-content').style.display = 'none';
+    }
+  } else {
+    refreshDashboard();
+  }
+  populateDateFilter();
+  refreshTable();
+  refreshDiagnosis();
+  refreshHistoryPanel();
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function refreshDashboard() {
+  const data = getActiveData();
+  if (!data.length) return;
+
+  // SPLIT: active pickers (≥50 szt.) vs functional/low-volume (<50 szt.)
+  const pickers = data.filter(r => r.quantityPicked >= 50);
+  const nonPickers = data.filter(r => r.quantityPicked < 50);
+
+  const uphs = pickers.map(r=>r.uph);
+  if(!uphs.length) return;
+  const avg = Math.round(uphs.reduce((a,b)=>a+b,0)/uphs.length);
+  const best = Math.max(...uphs);
+  const worst = Math.min(...uphs);
+  const belowGoal = pickers.filter(r=>r.uph < uphGoal).length;
+  const totalPick = data.reduce((s,r)=>s+r.quantityPicked,0);
+
+  // Header — based on real pickers only
+  document.getElementById('h-avg').textContent = avg;
+  document.getElementById('h-avg').className = 'hkpi-val ' + (avg>=uphGoal?'g':avg>=uphGoal*0.75?'y':'r');
+  document.getElementById('h-best').textContent = best;
+  document.getElementById('h-crit').textContent = belowGoal;
+  document.getElementById('h-pickers').textContent = pickers.length;
+  document.getElementById('h-total').textContent = totalPick.toLocaleString('pl-PL');
+
+  // Goal widget info
+  const goalPct = Math.round(avg/uphGoal*100);
+  document.getElementById('goal-pct').textContent =
+    `Zespół na ${goalPct}% celu · ${pickers.filter(r=>r.uph>=uphGoal).length}/${pickers.length} pickerów osiąga cel`;
+
+  // KPI cards
+  const spread = best - worst;
+  const avgRejects = (pickers.reduce((s,r)=>s+r.noOfRejects,0)/pickers.length).toFixed(1);
+  const aboveGoal = pickers.filter(r=>r.uph>=uphGoal).length;
+  document.getElementById('kpi-cards').innerHTML = [
+    { label:'Śr. UPH', val: avg, cls: avg>=uphGoal?'g':avg>=uphGoal*0.75?'y':'r', sub: `Cel: ${uphGoal} UPH` },
+    { label:`Poniżej celu (${uphGoal})`, val: belowGoal, cls:'r', sub: `${Math.round(belowGoal/pickers.length*100)}% zespołu` },
+    { label:`Osiąga cel (≥${uphGoal})`, val: aboveGoal, cls:'g', sub: `${Math.round(aboveGoal/pickers.length*100)}% zespołu` },
+    { label:'Rozstęp UPH', val: spread, cls:'b', sub: `${worst} → ${best}` },
+    { label:'Śr. rejects', val: avgRejects, cls: avgRejects>2?'r':'y', sub: 'na pickera' },
+  ].map(k=>`<div class="card"><div class="card-title">${k.label}</div><div class="card-val ${k.cls}">${k.val}</div><div class="card-sub">${k.sub}</div></div>`).join('');
+
+  // Top10 / Bot10 — only real pickers
+  const sorted = [...pickers].sort((a,b)=>b.uph-a.uph);
+  const top10 = sorted.slice(0,10);
+  const bot10 = sorted.slice(-10).reverse();
+  document.getElementById('top10').innerHTML = top10.map((r,i)=>`
+    <tr><td style="color:var(--muted)">${i+1}</td><td>${r.fullName}</td>
+    <td style="color:${uphColor(r.uph, uphGoal)};font-weight:700">${r.uph}</td>
+    <td>${r.quantityPicked.toLocaleString()}</td><td>${r.daysSinceHired}d</td></tr>`).join('');
+  document.getElementById('bot10').innerHTML = bot10.map((r,i)=>`
+    <tr><td style="color:var(--muted)">${sorted.length-Math.min(9,sorted.length-1)+i}</td><td>${r.fullName}</td>
+    <td style="color:${uphColor(r.uph, uphGoal)};font-weight:700">${r.uph}</td>
+    <td>${r.quantityPicked.toLocaleString()}</td><td>${r.daysSinceHired}d</td></tr>`).join('');
+
+  // Non-pickers table
+  if(nonPickers.length) {
+    const npSorted = [...nonPickers].sort((a,b)=>b.quantityPicked-a.quantityPicked);
+    document.getElementById('non-pickers').innerHTML = npSorted.map((r,i)=>`
+      <tr>
+        <td style="color:var(--muted)">${i+1}</td>
+        <td>${r.fullName}</td>
+        <td style="color:var(--muted)">${r.uph}</td>
+        <td style="color:var(--yellow);font-weight:600">${r.quantityPicked}</td>
+        <td style="color:var(--muted)">${r.percentDirectTime}</td>
+        <td style="color:var(--muted)">${r.daysSinceHired}d</td>
+      </tr>`).join('');
+  } else {
+    document.getElementById('non-pickers').innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:12px">Brak osób z <50 szt.</td></tr>';
+  }
+
+  // Dist chart — pickers only, with goal line annotation via plugin-free approach
+  const bins = [0,0,0,0,0,0];
+  uphs.forEach(u => {
+    if(u<30) bins[0]++;
+    else if(u<50) bins[1]++;
+    else if(u<70) bins[2]++;
+    else if(u<90) bins[3]++;
+    else if(u<120) bins[4]++;
+    else bins[5]++;
+  });
+  if(charts.dist) charts.dist.destroy();
+  charts.dist = new Chart(document.getElementById('chart-dist'), {
+    type:'bar',
+    data:{ labels:['<30','30–50','50–70','70–90','90–120','120+'],
+      datasets:[{data:bins,backgroundColor:['#e05050cc','#e05050aa','#f0b840aa','#3ecf8eaa','#4a9effcc','#a78bfacc'],borderWidth:0,borderRadius:2}]},
+    options: chartOpts()
+  });
+
+  // Day vs Night comparison chart (from history)
+  const allDates = [...new Set(history.map(h=>h.date))].sort().slice(-14);
+  const dayH = history.filter(h=>h.shift==='day');
+  const nightH = history.filter(h=>h.shift==='night');
+  if(charts.daynight) charts.daynight.destroy();
+  charts.daynight = new Chart(document.getElementById('chart-daynight'), {
+    type:'bar',
+    data:{
+      labels: allDates,
+      datasets:[
+        {label:'☀ Dzienna',data:allDates.map(d=>{ const f=dayH.find(h=>h.date===d); return f?f.avg:null; }),backgroundColor:'rgba(255,185,48,0.6)',borderColor:'var(--day)',borderWidth:1,borderRadius:2},
+        {label:'🌙 Nocna',data:allDates.map(d=>{ const f=nightH.find(h=>h.date===d); return f?f.avg:null; }),backgroundColor:'rgba(124,111,255,0.5)',borderColor:'var(--night)',borderWidth:1,borderRadius:2},
+      ]
+    },
+    options:{responsive:true,animation:{duration:300},
+      plugins:{legend:{labels:{color:'#a0a1b0',font:{family:'IBM Plex Mono',size:10},boxWidth:10}}},
+      scales:{
+        x:{ticks:{font:{family:'IBM Plex Mono',size:9},color:'#6b6c80'},grid:{color:'rgba(255,255,255,0.03)'}},
+        y:{ticks:{font:{family:'IBM Plex Mono',size:9},color:'#6b6c80'},grid:{color:'rgba(255,255,255,0.04)'},min:0}
+      }}
+  });
+}
+
+function chartOpts(showVal=false) {
+  return {
+    responsive:true, animation:{duration:300},
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>ctx.parsed.y+' UPH'}}},
+    scales:{
+      x:{ticks:{font:{family:'IBM Plex Mono',size:9},color:'#6b6c80',maxRotation:30},grid:{color:'rgba(255,255,255,0.03)'}},
+      y:{ticks:{font:{family:'IBM Plex Mono',size:9},color:'#6b6c80'},grid:{color:'rgba(255,255,255,0.04)'},min:0}
+    }
+  };
+}
+
+// ============================================================
+// FULL TABLE — grouped by worker, expandable history
+// ============================================================
+let expandedWorkers = new Set();
+
+function populateDateFilter() {
+  const dates = [...new Set(allData.map(r => r.fileDate))].sort();
+  const sel = document.getElementById('filter-date');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Wszystkie daty</option>' +
+    dates.map(d => {
+      // Try to get human date from history
+      const h = history.find(h => h.fileName === d);
+      const label = h ? `${h.date} · ${h.shift==='day'?'☀':'🌙'}` : d;
+      return `<option value="${d}">${label}</option>`;
+    }).join('');
+  if (prev) sel.value = prev;
+}
+
+function refreshTable() {
+  populateDateFilter();
+  filterTable();
+}
+
+function filterTable() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase();
+  const filterDate = document.getElementById('filter-date') ? document.getElementById('filter-date').value : '';
+  const filterShift = document.getElementById('filter-shift-tbl') ? document.getElementById('filter-shift-tbl').value : '';
+  const status = document.getElementById('filter-status').value;
+
+  // Start from ALL data (not just active shift) so history works
+  let data = allData.filter(r => {
+    if (q && !r.fullName.toLowerCase().includes(q) && !r.login.toLowerCase().includes(q)) return false;
+    if (filterDate && r.fileDate !== filterDate) return false;
+    if (filterShift && r.shift !== filterShift) return false;
+    if (status === 'top' && !(r.uph >= uphGoal && r.quantityPicked >= 50)) return false;
+    if (status === 'ok' && !(r.uph >= uphGoal*0.75 && r.uph < uphGoal && r.quantityPicked >= 50)) return false;
+    if (status === 'warn' && !(r.uph < uphGoal*0.75 && r.quantityPicked >= 50)) return false;
+    if (status === 'func' && r.quantityPicked >= 50) return false;
+    return true;
+  });
+
+  // Group by worker login/name
+  const workerMap = {};
+  data.forEach(r => {
+    const key = r.login || r.fullName;
+    if (!workerMap[key]) workerMap[key] = { name: r.fullName, login: key, rows: [] };
+    workerMap[key].rows.push(r);
+  });
+
+  // Sort workers
+  let workers = Object.values(workerMap);
+  workers.sort((a, b) => {
+    const aVal = sortKey === 'fullName' ? a.name :
+      sortKey === 'uph' ? (a.rows.reduce((s,r)=>s+r.uph,0)/a.rows.length) :
+      sortKey === 'quantityPicked' ? a.rows.reduce((s,r)=>s+r.quantityPicked,0) :
+      a.rows[0][sortKey] ?? 0;
+    const bVal = sortKey === 'fullName' ? b.name :
+      sortKey === 'uph' ? (b.rows.reduce((s,r)=>s+r.uph,0)/b.rows.length) :
+      sortKey === 'quantityPicked' ? b.rows.reduce((s,r)=>s+r.quantityPicked,0) :
+      b.rows[0][sortKey] ?? 0;
+    return sortAsc ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
+  });
+
+  document.getElementById('table-count').textContent = `${workers.length} pracowników · ${data.length} zmian`;
+
+  const tbody = document.getElementById('main-tbody');
+  tbody.innerHTML = '';
+
+  workers.forEach((w, wi) => {
+    const rows = [...w.rows].sort((a,b) => {
+      // Sort detail rows by date desc
+      const ha = history.find(h=>h.fileName===a.fileDate), hb = history.find(h=>h.fileName===b.fileDate);
+      const da = ha ? ha.date : a.fileDate, db = hb ? hb.date : b.fileDate;
+      return db.localeCompare(da);
+    });
+
+    const latestRow = rows[0];
+    const isExpanded = expandedWorkers.has(w.login);
+    const isFunctional = rows.every(r => r.quantityPicked < 50);
+    const maxUph = Math.max(...rows.map(r=>r.uph), 1);
+
+    const totalPicked = rows.reduce((s,r)=>s+r.quantityPicked,0);
+    const totalDirectMins = rows.reduce((s,r)=>s + (directTimeToMinutes(r.actualDirectTime) || 0), 0);
+    // True aggregated UPH = total picked / total direct hours (not average of per-shift UPH)
+    const avgUph = totalDirectMins > 0
+      ? Math.round(totalPicked / (totalDirectMins / 60))
+      : Math.round(rows.reduce((s,r)=>s+r.uph,0)/rows.length);
+    // Summary direct time label — sum of all shifts if multiple, else single shift value
+    const totalDirectLabel = rows.length > 1 && totalDirectMins > 0
+      ? `${Math.floor(totalDirectMins/60)}:${String(totalDirectMins%60).padStart(2,'0')} łącznie`
+      : latestRow.actualDirectTime;
+
+    // Direct time for latest row (for short-time highlight on summary row)
+    const latestDirectMins = directTimeToMinutes(latestRow.actualDirectTime);
+    const isShortTime = latestDirectMins !== null && latestDirectMins < 60;
+
+    // Get date label for latest row
+    const latestHist = history.find(h => h.fileName === latestRow.fileDate);
+    const latestDateStr = latestHist ? latestHist.date : latestRow.fileDate;
+    const latestDateLabel = shiftDateLabel(latestDateStr, latestRow.shift);
+
+    // Summary row — orange background if direct time < 1h
+    const tr = document.createElement('tr');
+    tr.className = 'worker-row' + (isExpanded ? ' expanded' : '') + (isShortTime ? ' short-time' : '');
+    tr.setAttribute('data-key', w.login);
+    tr.onclick = () => toggleWorker(w.login);
+    tr.innerHTML = `
+      <td><div class="expand-btn ${isExpanded?'open':''}" id="ebtn-${wi}">${isExpanded?'▼':'▶'}</div></td>
+      <td style="font-weight:600">${w.name}
+        ${rows.length > 1 ? `<span class="worker-avg-badge">${rows.length} zmian</span>` : ''}
+      </td>
+      <td>
+        ${rows.length === 1
+          ? `<span style="color:${latestRow.shift==='day'?'var(--day)':'var(--night)'}">${latestRow.shift==='day'?'☀':'🌙'} ${latestDateLabel}</span>`
+          : `<span style="color:var(--muted);font-size:10px">różne (${[...new Set(rows.map(r=>r.shift))].map(s=>s==='day'?'☀':'🌙').join(' ')})</span>`
+        }
+      </td>
+      <td>
+        <div class="uph-bar-wrap">
+          <div class="uph-bar-bg"><div class="uph-bar-fill" style="width:${Math.round(avgUph/maxUph*100)}%;background:${uphColor(avgUph)}"></div></div>
+          <span style="color:${isFunctional?'var(--muted)':uphColor(avgUph)};font-weight:700;min-width:36px">${avgUph}</span>
+        </div>
+      </td>
+      <td style="${isFunctional?'color:var(--yellow)':''}">${totalPicked.toLocaleString()}${isFunctional?' ⚑':''}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;color:${isShortTime?'var(--orange)':'var(--muted)'}${isShortTime?';font-weight:700':''}">${totalDirectLabel}${isShortTime?' ⚑':''}</td>
+      <td style="color:${latestRow.noOfRejects>5?'var(--red)':latestRow.noOfRejects>2?'var(--yellow)':'var(--muted)'}">${rows.reduce((s,r)=>s+r.noOfRejects,0)}</td>
+      <td style="color:var(--muted)">${latestRow.daysSinceHired}d</td>
+      <td>${isFunctional?'<span class="badge warn">FUNKCYJNY</span>':uphBadge(avgUph)}</td>
+    `;
+    tbody.appendChild(tr);
+
+    // Detail rows (hidden by default unless expanded)
+    const detailTr = document.createElement('tr');
+    detailTr.className = 'detail-row' + (isExpanded ? '' : ' hidden');
+    detailTr.id = `detail-${wi}`;
+    detailTr.innerHTML = `
+      <td colspan="9">
+        <div class="detail-inner ${isExpanded?'open':''}" id="detail-inner-${wi}">
+          <table>
+            <thead><tr>
+              <th>DATA</th><th>ZMIANA</th><th>UPH</th>
+              <th>PICKED</th><th>DIRECT TIME</th><th>REJECTS</th><th>STAŻ</th><th>STATUS</th>
+            </tr></thead>
+            <tbody>
+              ${rows.map(r => {
+                const rh = history.find(h=>h.fileName===r.fileDate);
+                const rDateStr = rh ? rh.date : r.fileDate;
+                const rDateLabel = shiftDateLabel(rDateStr, r.shift);
+                const rMins = directTimeToMinutes(r.actualDirectTime);
+                const rShort = rMins !== null && rMins < 60;
+                return `<tr style="${rShort?'background:rgba(255,140,0,0.07)':''}">
+                  <td style="font-family:'IBM Plex Mono',monospace">${rDateLabel}</td>
+                  <td><span style="color:${r.shift==='day'?'var(--day)':'var(--night)'}">${r.shift==='day'?'☀ Dzienna':'🌙 Nocna'}</span></td>
+                  <td style="color:${uphColor(r.uph)};font-weight:700;font-family:'IBM Plex Mono',monospace">${r.uph}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace">${r.quantityPicked.toLocaleString()}</td>
+                  <td style="font-family:'IBM Plex Mono',monospace;color:${rShort?'var(--orange)':'var(--muted)'}${rShort?';font-weight:700':''}">${r.actualDirectTime}${rShort?' ⚑':''}</td>
+                  <td style="color:${r.noOfRejects>5?'var(--red)':r.noOfRejects>2?'var(--yellow)':'var(--muted)'}">${r.noOfRejects}</td>
+                  <td style="color:var(--muted)">${r.daysSinceHired}d</td>
+                  <td>${r.quantityPicked<50?'<span class="badge warn">FUNKCYJNY</span>':rShort?'<span class="badge warn">KRÓTKI CZAS</span>':uphBadge(r.uph)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </td>`;
+    tbody.appendChild(detailTr);
+  });
+}
+
+function toggleWorker(key) {
+  if (expandedWorkers.has(key)) expandedWorkers.delete(key);
+  else expandedWorkers.add(key);
+  filterTable();
+}
+
+function sortBy(key) {
+  if(sortKey===key) sortAsc=!sortAsc; else { sortKey=key; sortAsc=false; }
+  filterTable();
+}
+
+// ============================================================
+// DIAGNOSIS
+// ============================================================
+function refreshDiagnosis() {
+  const allD = getActiveData();
+  if (!allD.length) {
+    document.getElementById('diag-output').innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak danych</div><div class="diag-body">Wgraj scorecard CSV, aby zobaczyć diagnozę.</div></div>';
+    if(charts.scatter) { charts.scatter.destroy(); charts.scatter = null; }
+    return;
+  }
+  // Exclude: functional (<50 szt.) AND short direct time (<60 min)
+  const data = allD.filter(r => {
+    if (r.quantityPicked < 50) return false;
+    const mins = directTimeToMinutes(r.actualDirectTime);
+    if (mins !== null && mins < 60) return false;
+    return true;
+  });
+  if (!data.length) {
+    document.getElementById('diag-output').innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak aktywnych pickerów</div><div class="diag-body">Po odfilterowaniu funkcyjnych i krótkich zmian — brak danych do diagnozy.</div></div>';
+    return;
+  }
+
+  const excludedCount = allD.length - data.length;
+  const excludedNote = excludedCount > 0 ? `<div class="diag-card info" style="margin-bottom:8px"><div class="diag-title" style="font-size:12px">ℹ Pominięto ${excludedCount} wpisów</div><div class="diag-body">Funkcyjni (<50 szt.) lub krótki direct time (<1h) — nie wliczani do diagnozy.</div></div>` : '';
+
+  const uphs = data.map(r=>r.uph);
+  const avg = Math.round(uphs.reduce((a,b)=>a+b,0)/uphs.length);
+  const spread = Math.max(...uphs) - Math.min(...uphs);
+  const belowGoal = data.filter(r=>r.uph < uphGoal);
+  const newbies = data.filter(r=>r.daysSinceHired<30);
+  const highRejects = data.filter(r=>r.noOfRejects>10);
+
+  const diags = [];
+
+  if(avg < uphGoal * 0.7) diags.push({cls:'crit',icon:'🔴',title:`Krytycznie niski śr. UPH: ${avg} (cel: ${uphGoal})`,
+    body:`Średnia na poziomie ${Math.round(avg/uphGoal*100)}% celu. Przy skali 2000+ zamówień dziennie oznacza realny niedobór przepustowości.`,
+    action:`→ Dziś: brygadzista robi time study na 3 najsłabszych pickerach — 30 min obserwacji każdy.`});
+  else if(avg < uphGoal) diags.push({cls:'warn',icon:'🟡',title:`UPH poniżej celu: ${avg} / ${uphGoal}`,
+    body:`Zespół na ${Math.round(avg/uphGoal*100)}% celu. Potencjał do wzrostu jest wyraźny — część pickerów już przekracza ${uphGoal} UPH.`,
+    action:`→ Tydzień 1: buddy system — top picker + 2 najsłabsi. Mierz delta po tygodniu.`});
+  else diags.push({cls:'ok',icon:'🟢',title:`UPH powyżej celu: ${avg} / ${uphGoal} ✓`,
+    body:`Zespół osiąga cel. Monitoruj stabilność — czy wynik jest powtarzalny na kolejnych zmianach?`,
+    action:`→ Nowy cel: utrzymanie przez minimum 5 kolejnych zmian.`});
+
+  if(belowGoal.length>0) diags.push({cls:'crit',icon:'🔴',title:`${belowGoal.length} pickerów poniżej celu ${uphGoal} UPH`,
+    body:`Pickerzy: ${belowGoal.slice(0,5).map(r=>r.fullName.split(',')[0]).join(', ')}${belowGoal.length>5?' (+'+( belowGoal.length-5)+' os.)':''}. To ${Math.round(belowGoal.length/data.length*100)}% aktywnego zespołu.`,
+    action:`→ Sprawdź dziś: sprawny sprzęt? Dobra strefa? Znajomość lokacji?`});
+
+  if(spread>50) diags.push({cls:'warn',icon:'🟡',title:`Duży rozstęp UPH: ${spread} jednostek`,
+    body:`Rozpiętość ${Math.min(...uphs)}–${Math.max(...uphs)} UPH. System pozwala na dobre wyniki — ale nie wszyscy je osiągają.`,
+    action:`→ Zidentyfikuj co różni top 3 od bottom 3: strefa? doświadczenie? pora dnia?`});
+
+  if(newbies.length>0) {
+    const newAvg = Math.round(newbies.reduce((s,r)=>s+r.uph,0)/newbies.length);
+    diags.push({cls:'info',icon:'🔵',title:`${newbies.length} nowych pracowników (<30 dni), śr. UPH: ${newAvg}`,
+      body:`Nowi pickerzy naturalnie obniżają średnią. Jeśli UPH to 60–70% celu — onboarding działa. Poniżej 50% celu — zbadaj proces szkoleń.`,
+      action:`→ Oczekiwany UPH po 30 dniach: ≥60% celu. Po 90 dniach: ≥85% celu.`});
+  }
+
+  if(highRejects.length>0) diags.push({cls:'warn',icon:'🟡',title:`${highRejects.length} pickerów z >10 rejectami`,
+    body:`Wysokie rejecty mogą oznaczać: problemy z lokacjami, spieszenie się kosztem jakości, lub nieznajomość produktu.`,
+    action:`→ High-UPH + high-rejects: picker się spieszy. Low-UPH + high-rejects: problem lokacyjny.`});
+
+  document.getElementById('diag-output').innerHTML = excludedNote + diags.map(d=>`
+    <div class="diag-card ${d.cls}">
+      <div class="diag-title">${d.icon} ${d.title}</div>
+      <div class="diag-body">${d.body}</div>
+      ${d.action?`<div class="diag-action">${d.action}</div>`:''}
+    </div>`).join('');
+
+  // Scatter UPH vs staż — solid colors, pickers only
+  if(charts.scatter) charts.scatter.destroy();
+  const scatterGreen = data.filter(r=>r.uph>=uphGoal).map(r=>({x:r.daysSinceHired,y:r.uph,label:r.fullName}));
+  const scatterYellow = data.filter(r=>r.uph>=uphGoal*0.75&&r.uph<uphGoal).map(r=>({x:r.daysSinceHired,y:r.uph,label:r.fullName}));
+  const scatterRed = data.filter(r=>r.uph<uphGoal*0.75).map(r=>({x:r.daysSinceHired,y:r.uph,label:r.fullName}));
+  charts.scatter = new Chart(document.getElementById('chart-scatter'), {
+    type:'scatter',
+    data:{datasets:[
+      {label:`Dobry (≥${uphGoal})`,data:scatterGreen,backgroundColor:'#3ecf8e',pointRadius:6,pointHoverRadius:8},
+      {label:`Przeciętny (${Math.round(uphGoal*0.75)}–${uphGoal-1})`,data:scatterYellow,backgroundColor:'#f0b840',pointRadius:6,pointHoverRadius:8},
+      {label:`Słaby (<${Math.round(uphGoal*0.75)})`,data:scatterRed,backgroundColor:'#e05050',pointRadius:6,pointHoverRadius:8},
+    ]},
+    options:{responsive:true,
+      plugins:{legend:{display:true,labels:{color:'#a0a1b0',font:{family:'IBM Plex Mono',size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:ctx=>`${ctx.raw.label}: ${ctx.raw.y} UPH, staż: ${ctx.raw.x} dni`}}},
+      scales:{
+        x:{title:{display:true,text:'Dni od zatrudnienia',color:'#6b6c80',font:{family:'IBM Plex Mono',size:10}},
+           ticks:{font:{family:'IBM Plex Mono',size:9},color:'#6b6c80'},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{title:{display:true,text:'UPH',color:'#6b6c80',font:{family:'IBM Plex Mono',size:10}},
+           ticks:{font:{family:'IBM Plex Mono',size:9},color:'#6b6c80'},grid:{color:'rgba(255,255,255,0.04)'},min:0}
+      }}
+  });
+}
+
+// ============================================================
+// HISTORY PANEL — dzień po dniu + tygodnie
+// ============================================================
+const DAY_NAMES = ['Nd','Pn','Wt','Śr','Cz','Pt','Sb'];
+
+function parseDateStr(str) {
+  // dd.mm.yyyy
+  const p = str.split('.');
+  if(p.length===3) return new Date(+p[2], +p[1]-1, +p[0]);
+  return new Date(str);
+}
+
+function getWeekKey(dateStr) {
+  // Week starts Sunday. Returns "YYYY-Www" key
+  const d = parseDateStr(dateStr);
+  const day = d.getDay(); // 0=Sun
+  const sunday = new Date(d); sunday.setDate(d.getDate() - day);
+  return `${sunday.getFullYear()}-${String(sunday.getMonth()+1).padStart(2,'0')}-${String(sunday.getDate()).padStart(2,'0')}`;
+}
+
+function formatWeekLabel(sundayStr) {
+  const d = parseDateStr(sundayStr.replace(/-/g,'.').split('.').reverse().join('.'));
+  const sat = new Date(d); sat.setDate(d.getDate()+6);
+  return `${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')} – ${sat.getDate()}.${String(sat.getMonth()+1).padStart(2,'0')}.${sat.getFullYear()}`;
+}
+
+function refreshHistoryPanel() {
+  const allDates = [...new Set(history.map(h=>h.date))].sort();
+  const dayH = history.filter(h=>h.shift==='day');
+  const nightH = history.filter(h=>h.shift==='night');
+
+  // TREND CHART
+  if(charts.history) charts.history.destroy();
+  charts.history = new Chart(document.getElementById('chart-history'), {
+    type:'line',
+    data:{
+      labels: allDates,
+      datasets:[
+        {label:'☀ Dzienna',data:allDates.map(d=>{ const f=dayH.find(h=>h.date===d); return f?f.avg:null; }),
+          borderColor:'#ffb930',backgroundColor:'rgba(255,185,48,0.08)',tension:0.3,pointRadius:5,pointBackgroundColor:'#ffb930',spanGaps:true},
+        {label:'🌙 Nocna',data:allDates.map(d=>{ const f=nightH.find(h=>h.date===d); return f?f.avg:null; }),
+          borderColor:'#7c6fff',backgroundColor:'rgba(124,111,255,0.08)',tension:0.3,pointRadius:5,pointBackgroundColor:'#7c6fff',spanGaps:true},
+        {label:'Cel 80',data:allDates.map(()=>80),
+          borderColor:'rgba(62,207,142,0.35)',borderDash:[5,5],pointRadius:0,fill:false}
+      ]
+    },
+    options:{responsive:true,
+      plugins:{legend:{labels:{color:'#a0a1b0',font:{family:'IBM Plex Mono',size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+ctx.parsed.y+' UPH'}}},
+      scales:{
+        x:{ticks:{font:{family:'IBM Plex Mono',size:9},color:'#6b6c80'},grid:{color:'rgba(255,255,255,0.03)'}},
+        y:{ticks:{font:{family:'IBM Plex Mono',size:9},color:'#6b6c80'},grid:{color:'rgba(255,255,255,0.04)'},min:0,suggestedMax:120}
+      }}
+  });
+
+  // DAY-BY-DAY COMPARISON TABLE
+  if(!allDates.length) {
+    document.getElementById('day-compare-tbody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:20px">Brak danych</td></tr>';
+  } else {
+    document.getElementById('day-compare-tbody').innerHTML = [...allDates].reverse().map(date => {
+      const d = parseDateStr(date);
+      const dayName = DAY_NAMES[d.getDay()];
+      const dRec = dayH.find(h=>h.date===date);
+      const nRec = nightH.find(h=>h.date===date);
+      const dAvg = dRec ? dRec.avg : null;
+      const nAvg = nRec ? nRec.avg : null;
+      let winner = '—', diff = '—', winColor = 'var(--muted)';
+      if(dAvg!==null && nAvg!==null) {
+        const delta = dAvg - nAvg;
+        if(delta>0){ winner='☀ Dzienna'; diff=`+${delta}`; winColor='var(--day)'; }
+        else if(delta<0){ winner='🌙 Nocna'; diff=`${delta}`; winColor='var(--night)'; }
+        else { winner='Remis'; diff='0'; }
+      } else if(dAvg!==null) { winner='☀ tylko dzienna'; winColor='var(--day)'; }
+      else if(nAvg!==null) { winner='🌙 tylko nocna'; winColor='var(--night)'; }
+      return `<tr>
+        <td style="font-weight:600">${date}</td>
+        <td style="color:var(--muted)">${dayName}</td>
+        <td style="color:${dAvg?uphColor(dAvg):'var(--muted)'};font-weight:700">${dAvg??'—'}</td>
+        <td style="color:var(--muted)">${dRec?dRec.data.length+' os.':'—'}</td>
+        <td style="color:${nAvg?uphColor(nAvg):'var(--muted)'};font-weight:700">${nAvg??'—'}</td>
+        <td style="color:var(--muted)">${nRec?nRec.data.length+' os.':'—'}</td>
+        <td style="color:${winColor}">${winner}</td>
+        <td style="color:${winColor};font-family:'IBM Plex Mono',monospace">${diff}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // WEEKLY SUMMARY
+  const weeks = {};
+  history.forEach(h => {
+    const wk = getWeekKey(h.date);
+    if(!weeks[wk]) weeks[wk] = { day:[], night:[], dates:[] };
+    if(h.shift==='day') weeks[wk].day.push(h);
+    else weeks[wk].night.push(h);
+    if(!weeks[wk].dates.includes(h.date)) weeks[wk].dates.push(h.date);
+  });
+
+  const wkKeys = Object.keys(weeks).sort().reverse();
+  if(!wkKeys.length) {
+    document.getElementById('weekly-summary').innerHTML = '<div style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:16px 0">Brak danych tygodniowych</div>';
+  } else {
+    document.getElementById('weekly-summary').innerHTML = wkKeys.map((wk, wi) => {
+      const w = weeks[wk];
+      const allShifts = [...w.day,...w.night];
+      const wAvg = allShifts.length ? Math.round(allShifts.reduce((s,h)=>s+h.avg,0)/allShifts.length) : null;
+      const dAvg = w.day.length ? Math.round(w.day.reduce((s,h)=>s+h.avg,0)/w.day.length) : null;
+      const nAvg = w.night.length ? Math.round(w.night.reduce((s,h)=>s+h.avg,0)/w.night.length) : null;
+      const bestDay = allShifts.reduce((b,h)=>h.avg>b.avg?h:b, allShifts[0]);
+      const worstDay = allShifts.reduce((b,h)=>h.avg<b.avg?h:b, allShifts[0]);
+      const totalPicked = allShifts.reduce((s,h)=>s+h.data.reduce((ss,r)=>ss+r.quantityPicked,0),0);
+
+      // vs previous week
+      let vsPrev = '';
+      if(wi < wkKeys.length-1) {
+        const prevWk = weeks[wkKeys[wi+1]];
+        const prevAll = [...prevWk.day,...prevWk.night];
+        if(prevAll.length && wAvg) {
+          const prevAvg = Math.round(prevAll.reduce((s,h)=>s+h.avg,0)/prevAll.length);
+          const delta = wAvg - prevAvg;
+          vsPrev = `<span style="color:${delta>=0?'var(--green)':'var(--red)'};font-family:'IBM Plex Mono',monospace;font-size:12px;margin-left:10px">${delta>=0?'▲':'▼'} ${Math.abs(delta)} vs poprz. tydzień</span>`;
+        }
+      }
+
+      return `<div class="card" style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px">TYDZIEŃ ${wkKeys.length-wi} · ${formatWeekLabel(wk)}</div>
+            <div style="font-size:18px;font-weight:800;margin-top:3px">
+              ${wAvg ? `<span style="color:${uphColor(wAvg)}">${wAvg} UPH</span>` : '—'}
+              ${vsPrev}
+            </div>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">${allShifts.length} zmian · ${w.dates.length} dni · ${totalPicked.toLocaleString('pl-PL')} szt. łącznie</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px">
+          <div><div style="font-size:9px;color:var(--muted);letter-spacing:2px;font-family:'IBM Plex Mono',monospace">☀ DZIENNA ŚR.</div>
+            <div style="font-size:22px;font-weight:700;color:${dAvg?uphColor(dAvg):'var(--muted)'};">${dAvg??'brak'}</div></div>
+          <div><div style="font-size:9px;color:var(--muted);letter-spacing:2px;font-family:'IBM Plex Mono',monospace">🌙 NOCNA ŚR.</div>
+            <div style="font-size:22px;font-weight:700;color:${nAvg?uphColor(nAvg):'var(--muted)'};">${nAvg??'brak'}</div></div>
+          <div><div style="font-size:9px;color:var(--muted);letter-spacing:2px;font-family:'IBM Plex Mono',monospace">NAJLEPSZA ZMIANA</div>
+            <div style="font-size:14px;font-weight:700;color:var(--green);margin-top:4px">${bestDay.date} <span style="color:${bestDay.shift==='day'?'var(--day)':'var(--night)'}">${bestDay.shift==='day'?'☀':'🌙'}</span> · ${bestDay.avg} UPH</div></div>
+          <div><div style="font-size:9px;color:var(--muted);letter-spacing:2px;font-family:'IBM Plex Mono',monospace">NAJSŁABSZA ZMIANA</div>
+            <div style="font-size:14px;font-weight:700;color:var(--red);margin-top:4px">${worstDay.date} <span style="color:${worstDay.shift==='day'?'var(--day)':'var(--night)'}">${worstDay.shift==='day'?'☀':'🌙'}</span> · ${worstDay.avg} UPH</div></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // LIST OF ALL SHIFTS
+  document.getElementById('history-panel').innerHTML = history.length ? '<div class="hist-list">' + [...history].reverse().map((h,i) => {
+    const idx = history.length-1-i;
+    return `<div class="hist-item">
+      <div class="hist-shift-dot" style="background:${h.shift==='day'?'var(--day)':'var(--night)'}"></div>
+      <div class="hist-info">
+        <div class="hist-date">${h.date} · ${h.shift==='day'?'☀ Dzienna (06–18)':'🌙 Nocna (18–06)'}</div>
+        <div class="hist-meta">${h.data.length} pickerów · min ${Math.min(...h.data.map(r=>r.uph))} / max ${Math.max(...h.data.map(r=>r.uph))} UPH · ${h.fileName}</div>
+      </div>
+      <div class="hist-stats">
+        <div class="hist-uph" style="color:${uphColor(h.avg)}">${h.avg}</div>
+        <div style="font-size:10px;color:var(--muted)">śr. UPH</div>
+      </div>
+      <button class="btn btn-danger" onclick="removeHistory(${idx})">✕</button>
+    </div>`;
+  }).join('') + '</div>'
+  : '<div style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:16px 0">Brak historii</div>';
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function uphColor(u, goal) {
+  goal = goal || uphGoal;
+  if(u >= goal) return 'var(--green)';
+  if(u >= goal * 0.75) return 'var(--yellow)';
+  return 'var(--red)';
+}
+function uphBadge(u, goal) {
+  goal = goal || uphGoal;
+  if(u >= goal) return `<span class="badge ok">≥${goal} ✓</span>`;
+  if(u >= goal * 0.75) return '<span class="badge warn">SŁABY</span>';
+  return '<span class="badge crit">KRYTYCZNY</span>';
+}
+
+// Parse "hh:mm" or "h:mm" → total minutes
+function directTimeToMinutes(str) {
+  if (!str || str === '—') return null;
+  const parts = str.split(':');
+  if (parts.length !== 2) return null;
+  return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+}
+
+// For night shift: "03.03.2026" → "3 → 4.03"
+// Takes the base date string (dd.mm.yyyy) and returns "D → D+1.MM"
+function nightDateLabel(dateStr) {
+  const p = dateStr.split('.');
+  if (p.length !== 3) return dateStr;
+  const d = parseInt(p[0]), m = parseInt(p[1]), y = parseInt(p[2]);
+  const base = new Date(y, m-1, d);
+  const next = new Date(y, m-1, d+1);
+  const nextD = next.getDate();
+  const nextM = String(next.getMonth()+1).padStart(2,'0');
+  const nextY = next.getFullYear();
+  // If month changes
+  if (next.getMonth() !== base.getMonth()) {
+    return `${d} → ${nextD}.${nextM}.${nextY}`;
+  }
+  return `${d} → ${nextD}.${String(m).padStart(2,'0')}.${y}`;
+}
+
+// Full date label for a record
+function shiftDateLabel(dateStr, shift) {
+  if (shift === 'night') return nightDateLabel(dateStr);
+  return dateStr;
+}
+
+function switchTab(id, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  if(typeof el === 'object' && el.classList) el.classList.add('active');
+  else document.querySelectorAll('.tab')[['dashboard','import','table','diagnosis','history'].indexOf(id)].classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+  if(id==='dashboard') refreshDashboard();
+  if(id==='table') refreshTable();
+  if(id==='diagnosis') refreshDiagnosis();
+  if(id==='history') refreshHistoryPanel();
+}
+
+// ============================================================
+// INIT — load from localStorage on startup
+// ============================================================
+setupDragDrop();
+selectImportShift('day');
+
+(function init() {
+  const loaded = loadFromStorage();
+  if (loaded && history.length) {
+    // Restore goal input
+    document.getElementById('uph-goal-input').value = uphGoal;
+    // Activate last shift in history
+    const lastShift = history[history.length - 1].shift;
+    setActiveShift(lastShift);
+    renderImportHistory();
+    populateDateFilter();
+    document.getElementById('no-data-msg').style.display = 'none';
+    document.getElementById('dashboard-content').style.display = 'block';
+    updateShiftDateInfo();
+  }
+  updateStorageInfo();
+})();
+</script>
+</body>
+</html>
