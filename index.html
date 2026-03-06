@@ -317,6 +317,54 @@ tr.detail-row.hidden { display: none; }
   font-size: 10px; padding: 2px 8px; margin-left: 8px;
   background: rgba(240,184,64,0.1); border: 1px solid rgba(240,184,64,0.3); color: var(--yellow);
 }
+
+/* SYNC BAR */
+.sync-bar {
+  background: #0a1628;
+  border-bottom: 1px solid #1a2a40;
+  padding: 9px 28px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.sync-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4a9eff; letter-spacing: 2px; }
+.sync-status { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--muted); flex: 1; }
+.sync-btn {
+  font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 1px;
+  padding: 5px 14px; border: 1px solid #4a9eff; background: rgba(74,158,255,0.1);
+  color: #4a9eff; cursor: pointer; transition: all 0.15s;
+}
+.sync-btn:hover { background: rgba(74,158,255,0.2); }
+.sync-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.sync-spinner { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.btn-blue { background: rgba(74,158,255,0.15); border: 1px solid #4a9eff; color: #4a9eff; font-weight: 700; }
+.btn-blue:hover { background: rgba(74,158,255,0.25); }
+.drive-setup-box {
+  background: var(--s1); border: 1px solid var(--border);
+  border-left: 3px solid var(--blue);
+  padding: 20px 24px; margin-bottom: 16px;
+}
+.drive-setup-box.connected { border-left-color: var(--green); }
+.drive-input {
+  background: var(--s2); border: 1px solid var(--border); color: var(--text);
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 8px 14px;
+  outline: none; width: 100%; margin: 8px 0;
+}
+.drive-input:focus { border-color: var(--blue); }
+.drive-file-list { margin-top: 12px; }
+.drive-file-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 10px; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  border-bottom: 1px solid rgba(46,47,62,0.4);
+}
+.drive-file-item:last-child { border-bottom: none; }
+.drive-file-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+.drive-file-dot.new { background: var(--yellow); animation: pulse 1s ease infinite alternate; }
+@keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+.msg.info { background: rgba(74,158,255,0.08); border: 1px solid rgba(74,158,255,0.2); color: var(--blue); }
+
 </style>
 </head>
 <body>
@@ -335,6 +383,15 @@ tr.detail-row.hidden { display: none; }
   </div>
 </header>
 
+<!-- GOOGLE DRIVE SYNC BAR -->
+<div class="sync-bar">
+  <span class="sync-label">☁ GOOGLE DRIVE</span>
+  <span class="sync-status" id="sync-status">Skonfiguruj folder Google Drive w zakładce Import →</span>
+  <button class="sync-btn" id="sync-btn" onclick="syncFromDrive()" disabled>⟳ SYNCHRONIZUJ</button>
+  <span id="sync-last" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)"></span>
+</div>
+
+
 <div class="shift-bar">
   <span class="shift-label">AKTYWNA ZMIANA:</span>
   <button class="shift-btn" id="btn-day" onclick="setActiveShift('day')">
@@ -348,7 +405,7 @@ tr.detail-row.hidden { display: none; }
 
 <div class="tabs">
   <div class="tab active" onclick="switchTab('dashboard',this)">Dashboard</div>
-  <div class="tab" onclick="switchTab('import',this)">Import CSV</div>
+  <div class="tab" onclick="switchTab('import',this)">Import / Drive</div>
   <div class="tab" onclick="switchTab('table',this)">Tabela pełna</div>
   <div class="tab" onclick="switchTab('diagnosis',this)">Diagnoza</div>
   <div class="tab" onclick="switchTab('history',this)">Historia zmian</div>
@@ -361,8 +418,8 @@ tr.detail-row.hidden { display: none; }
   <div id="no-data-msg" style="text-align:center;padding:60px 0">
     <div style="font-size:40px;margin-bottom:16px">📂</div>
     <div style="font-size:20px;font-weight:700;margin-bottom:8px">Brak danych</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Przejdź do zakładki <strong style="color:var(--yellow)">Import CSV</strong> i wgraj scorecard z AFT-X</div>
-    <button class="btn btn-primary" onclick="switchTab('import', document.querySelectorAll('.tab')[1])">→ IMPORTUJ DANE</button>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Przejdź do zakładki <strong style="color:var(--yellow)">Import / Drive</strong> — połącz folder Google Drive lub wgraj CSV ręcznie</div>
+    <button class="btn btn-primary" onclick="switchTab('import', document.querySelectorAll('.tab')[1])">→ KONFIGURUJ DRIVE</button>
   </div>
   <div id="dashboard-content" style="display:none">
     <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:4px">
@@ -415,7 +472,44 @@ tr.detail-row.hidden { display: none; }
 
 <!-- IMPORT -->
 <div class="panel" id="panel-import">
-  <div class="slabel">WYBIERZ ZMIANĘ</div>
+
+  <div class="slabel" style="margin-top:0">GOOGLE DRIVE — AUTOMATYCZNA SYNCHRONIZACJA</div>
+  <div class="drive-setup-box" id="drive-setup-box">
+    <div style="font-size:16px;font-weight:700;margin-bottom:6px">☁️ Podłącz folder Google Drive</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">
+      Wklej link do folderu Google Drive. Folder musi być udostępniony publicznie ("Każdy z linkiem może wyświetlać").<br>
+      Dashboard automatycznie pobierze wszystkie CSV — każdy kto otworzy link zobaczy te same dane.
+    </div>
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:6px;letter-spacing:2px">LINK DO FOLDERU</div>
+    <input type="text" id="drive-folder-url" class="drive-input"
+      placeholder="https://drive.google.com/drive/folders/XXXXX?usp=sharing"
+      value="https://drive.google.com/drive/folders/1TeSPMWo7n66jRARsT6eOCDrOIEYFCTgl?usp=sharing"
+    />
+    <div class="flex-row" style="margin-top:10px;gap:10px">
+      <button class="btn btn-blue" onclick="connectDriveFolder()">☁ POŁĄCZ I POBIERZ PLIKI</button>
+      <button class="btn btn-ghost" onclick="clearDriveConfig()">✕ Rozłącz</button>
+    </div>
+    <div id="drive-connect-msg"></div>
+    <div id="drive-file-section" style="display:none;margin-top:16px">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">PLIKI CSV W FOLDERZE</div>
+      <div id="drive-file-list" class="drive-file-list" style="background:var(--s2);border:1px solid var(--border);max-height:200px;overflow-y:auto"></div>
+      <div style="margin-top:10px">
+        <button class="btn btn-blue" onclick="loadAllFromDrive()" id="load-all-btn">⬇ ZAŁADUJ WSZYSTKIE DO DASHBOARDU</button>
+      </div>
+    </div>
+  </div>
+  <div style="background:var(--s1);border:1px solid var(--border);padding:16px 20px;margin-bottom:16px">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--blue);letter-spacing:2px;margin-bottom:10px">JAK SKONFIGUROWAĆ FOLDER</div>
+    <div style="font-size:12px;color:var(--muted);line-height:2">
+      1. drive.google.com → folder z CSV<br>
+      2. Kliknij prawym → <strong style="color:var(--text)">Udostępnij</strong><br>
+      3. Ustaw <strong style="color:var(--yellow)">"Każdy z linkiem może wyświetlać"</strong><br>
+      4. Wklej link powyżej → kliknij POŁĄCZ<br>
+      5. Nowe pliki CSV w folderze → klikaj <strong style="color:var(--blue)">⟳ SYNCHRONIZUJ</strong>
+    </div>
+  </div>
+  <div class="slabel">LUB WGRAJ PLIKI RĘCZNIE</div>
+
   <div class="shift-select-block">
     <div class="shift-select-title">KTÓRA ZMIANA GENERUJE TEN SCORECARD?</div>
     <div class="shift-select-btns">
@@ -575,6 +669,181 @@ let charts = {};
 let uphGoal = 65;
 
 const STORAGE_KEY = 'uph_tracker_data_v1';
+
+
+// ============================================================
+// GOOGLE DRIVE INTEGRATION
+// ============================================================
+const DRIVE_KEY = 'uph_tracker_drive_v1';
+let driveFolderId = '';
+let driveFiles = [];
+
+function extractFolderId(url) {
+  const m = url.match(/folders\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : null;
+}
+
+async function fetchDriveCSV(fileId) {
+  const url = `https://drive.google.com/uc?export=download&id=${fileId}`;
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return await response.text();
+}
+
+async function fetchDriveFolderFiles(folderId) {
+  const corsProxy = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://drive.google.com/drive/folders/${folderId}`)}`;
+  const resp = await fetch(corsProxy, { signal: AbortSignal.timeout(15000) });
+  if (!resp.ok) throw new Error('Nie można pobrać listy plików');
+  const json = await resp.json();
+  const html = json.contents;
+  const files = [];
+  // Extract file IDs and CSV names from Drive folder HTML
+  const patterns = [
+    /\["([a-zA-Z0-9_-]{25,})",[^\]]*?"([^"]*\.csv)"[^\]]*?\]/g,
+    /"(1[a-zA-Z0-9_-]{27,})"[^"]*?"([^"]*\.csv)"/g,
+  ];
+  for (const pat of patterns) {
+    let match;
+    pat.lastIndex = 0;
+    while ((match = pat.exec(html)) !== null) {
+      const id = match[1], name = match[2];
+      if (!files.some(f => f.id === id)) files.push({ id, name });
+    }
+    if (files.length) break;
+  }
+  return files;
+}
+
+async function connectDriveFolder() {
+  const urlInput = document.getElementById('drive-folder-url').value.trim();
+  const folderId = extractFolderId(urlInput);
+  if (!folderId) {
+    showMsg('drive-connect-msg', '✗ Nieprawidłowy link. Skopiuj link do folderu z Google Drive.', 'err');
+    return;
+  }
+  driveFolderId = folderId;
+  try { localStorage.setItem(DRIVE_KEY, JSON.stringify({ folderId, url: urlInput })); } catch(e) {}
+  showMsg('drive-connect-msg', '<span class="sync-spinner">⟳</span> Pobieranie listy plików...', 'info');
+  try {
+    const files = await fetchDriveFolderFiles(folderId);
+    if (!files.length) {
+      showMsg('drive-connect-msg', '⚠ Brak plików CSV lub folder nie jest publiczny. Sprawdź uprawnienia udostępniania.', 'err');
+      return;
+    }
+    driveFiles = files;
+    renderDriveFileList(files);
+    document.getElementById('drive-file-section').style.display = 'block';
+    document.getElementById('drive-setup-box').classList.add('connected');
+    document.getElementById('sync-btn').disabled = false;
+    document.getElementById('sync-status').textContent = `Folder połączony · ${files.length} plików CSV`;
+    showMsg('drive-connect-msg', `✓ Znaleziono ${files.length} plików CSV`, 'ok');
+  } catch(e) {
+    showMsg('drive-connect-msg', `✗ Błąd: ${e.message}. Sprawdź czy folder jest publiczny.`, 'err');
+  }
+}
+
+function renderDriveFileList(files) {
+  const el = document.getElementById('drive-file-list');
+  if (!el) return;
+  const loadedFileNames = new Set(history.map(h => h.fileName));
+  el.innerHTML = files.length
+    ? files.map(f => {
+        const isLoaded = loadedFileNames.has(f.name);
+        return `<div class="drive-file-item">
+          <div class="drive-file-dot ${isLoaded ? '' : 'new'}"></div>
+          <span style="flex:1;color:${isLoaded ? 'var(--muted)' : 'var(--text)'}">${f.name}</span>
+          <span style="font-size:9px;color:${isLoaded ? 'var(--green)' : 'var(--yellow)'}">${isLoaded ? '✓ załadowany' : '● nowy'}</span>
+        </div>`;
+      }).join('')
+    : '<div style="padding:12px;color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px">Brak plików CSV</div>';
+}
+
+async function loadAllFromDrive() {
+  if (!driveFiles.length) return;
+  const btn = document.getElementById('load-all-btn');
+  btn.disabled = true; btn.textContent = '⟳ Pobieranie...';
+  let loaded = 0, skipped = 0, errors = [];
+  for (const file of driveFiles) {
+    try {
+      if (history.some(h => h.fileName === file.name)) { skipped++; continue; }
+      const csvText = await fetchDriveCSV(file.id);
+      const result = parseSingleCSVText(file.name, csvText);
+      if (result.skipped) { skipped++; continue; }
+      history.push({ date: result.dateStr, shift: result.shift, data: result.parsed, avg: result.avg, fileName: file.name, driveFileId: file.id });
+      allData = allData.concat(result.parsed);
+      loaded++;
+    } catch(e) { errors.push(`${file.name}: ${e.message}`); }
+  }
+  sortHistory(); saveToStorage();
+  if (history.length) setActiveShift(history[history.length-1].shift);
+  renderImportHistory(); populateDateFilter();
+  document.getElementById('no-data-msg').style.display = allData.length ? 'none' : 'block';
+  document.getElementById('dashboard-content').style.display = allData.length ? 'block' : 'none';
+  updateShiftDateInfo(); renderDriveFileList(driveFiles);
+  btn.disabled = false; btn.textContent = '⬇ ZAŁADUJ WSZYSTKIE DO DASHBOARDU';
+  let msg = `✓ Załadowano ${loaded} nowych plików`;
+  if (skipped) msg += ` · pominięto ${skipped} (już załadowane)`;
+  if (errors.length) msg += ` · błędy: ${errors.join(', ')}`;
+  showMsg('drive-connect-msg', msg, errors.length ? 'err' : 'ok');
+  updateSyncBar();
+}
+
+async function syncFromDrive() {
+  if (!driveFolderId) return;
+  const btn = document.getElementById('sync-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="sync-spinner">⟳</span> SYNC...';
+  document.getElementById('sync-status').textContent = 'Pobieranie listy plików...';
+  try {
+    const files = await fetchDriveFolderFiles(driveFolderId);
+    driveFiles = files;
+    const newFiles = files.filter(f => !history.some(h => h.fileName === f.name));
+    if (newFiles.length > 0) {
+      renderDriveFileList(files);
+      document.getElementById('drive-file-section').style.display = 'block';
+      await loadAllFromDrive();
+    } else {
+      document.getElementById('sync-status').textContent = `✓ Wszystko aktualne · ${files.length} plików · sync: ${new Date().toLocaleTimeString('pl-PL')}`;
+    }
+  } catch(e) {
+    document.getElementById('sync-status').textContent = `✗ Błąd sync: ${e.message}`;
+  }
+  btn.disabled = false; btn.innerHTML = '⟳ SYNCHRONIZUJ';
+  updateSyncBar();
+}
+
+function updateSyncBar() {
+  const el = document.getElementById('sync-last');
+  if (el) el.textContent = `Ostatni sync: ${new Date().toLocaleTimeString('pl-PL')}`;
+}
+
+function clearDriveConfig() {
+  driveFolderId = ''; driveFiles = [];
+  try { localStorage.removeItem(DRIVE_KEY); } catch(e) {}
+  const inp = document.getElementById('drive-folder-url');
+  if (inp) inp.value = '';
+  const sec = document.getElementById('drive-file-section');
+  if (sec) sec.style.display = 'none';
+  document.getElementById('drive-setup-box').classList.remove('connected');
+  document.getElementById('sync-btn').disabled = true;
+  document.getElementById('sync-status').textContent = 'Skonfiguruj folder Google Drive w zakładce Import →';
+  showMsg('drive-connect-msg', '✓ Rozłączono', 'ok');
+}
+
+function loadDriveConfig() {
+  try {
+    const raw = localStorage.getItem(DRIVE_KEY);
+    if (!raw) return;
+    const cfg = JSON.parse(raw);
+    if (cfg.folderId) {
+      driveFolderId = cfg.folderId;
+      const inp = document.getElementById('drive-folder-url');
+      if (inp) inp.value = cfg.url || '';
+      document.getElementById('sync-btn').disabled = false;
+      document.getElementById('sync-status').textContent = `Folder zapisany · kliknij SYNCHRONIZUJ aby pobrać nowe pliki`;
+      document.getElementById('drive-setup-box').classList.add('connected');
+    }
+  } catch(e) {}
+}
 
 // ============================================================
 // LOCALSTORAGE PERSISTENCE
@@ -927,7 +1196,7 @@ function renderImportHistory() {
       <div class="hist-shift-dot" style="background:${h.shift==='day'?'var(--day)':'var(--night)'}"></div>
       <div class="hist-info">
         <div class="hist-date">${h.date} · ${h.shift==='day'?'☀ Dzienna (06–18)':'🌙 Nocna (18–06)'}</div>
-        <div class="hist-meta" style="font-family:'IBM Plex Mono',monospace;font-size:10px">${h.fileName}</div>
+        <div class="hist-meta" style="font-family:'IBM Plex Mono',monospace;font-size:10px">${h.fileName}${h.driveFileId?' · ☁ Google Drive':''}</div>
         <div class="hist-meta">${h.data.length} pickerów · śr. UPH: <span style="color:${uphColor(h.avg)};font-weight:700">${h.avg}</span></div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
@@ -1618,7 +1887,9 @@ selectImportShift('day');
     updateShiftDateInfo();
   }
   updateStorageInfo();
+  loadDriveConfig();
 })();
 </script>
 </body>
 </html>
+
