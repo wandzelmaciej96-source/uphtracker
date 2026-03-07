@@ -385,27 +385,18 @@ tr.detail-row.hidden { display: none; }
 
 <!-- GOOGLE DRIVE SYNC BAR -->
 <div class="sync-bar">
-  <span class="sync-label">☁ GOOGLE DRIVE</span>
-  <span class="sync-status" id="sync-status">Skonfiguruj folder Google Drive w zakładce Import →</span>
-  <button class="sync-btn" id="sync-btn" onclick="syncFromDrive()" disabled>⟳ SYNCHRONIZUJ</button>
+  <span class="sync-label">&#9729; GOOGLE DRIVE</span>
+  <span class="sync-status" id="sync-status">Kliknij SYNCHRONIZUJ aby pobrac dane</span>
+  <button class="sync-btn" id="sync-btn" onclick="syncFromDrive()">&#8635; SYNCHRONIZUJ</button>
   <span id="sync-last" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted)"></span>
 </div>
 
 
-<div class="shift-bar">
-  <span class="shift-label">AKTYWNA ZMIANA:</span>
-  <button class="shift-btn" id="btn-day" onclick="setActiveShift('day')">
-    <div class="shift-dot dot-day"></div>☀ DZIENNA (06:00–18:00)
-  </button>
-  <button class="shift-btn" id="btn-night" onclick="setActiveShift('night')">
-    <div class="shift-dot dot-night"></div>🌙 NOCNA (18:00–06:00)
-  </button>
-  <div class="shift-date-info" id="shift-date-info">Brak załadowanych danych</div>
 </div>
 
 <div class="tabs">
   <div class="tab active" onclick="switchTab('dashboard',this)">Dashboard</div>
-  <div class="tab" onclick="switchTab('import',this)">Import / Drive</div>
+  <div class="tab" onclick="switchTab('import',this)">Synchronizacja</div>
   <div class="tab" onclick="switchTab('table',this)">Tabela pełna</div>
   <div class="tab" onclick="switchTab('diagnosis',this)">Diagnoza</div>
   <div class="tab" onclick="switchTab('history',this)">Historia zmian</div>
@@ -418,8 +409,8 @@ tr.detail-row.hidden { display: none; }
   <div id="no-data-msg" style="text-align:center;padding:60px 0">
     <div style="font-size:40px;margin-bottom:16px">📂</div>
     <div style="font-size:20px;font-weight:700;margin-bottom:8px">Brak danych</div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Przejdź do zakładki <strong style="color:var(--yellow)">Import / Drive</strong> — połącz folder Google Drive lub wgraj CSV ręcznie</div>
-    <button class="btn btn-primary" onclick="switchTab('import', document.querySelectorAll('.tab')[1])">→ KONFIGURUJ DRIVE</button>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">Przejdź do zakładki <strong style="color:var(--yellow)">Synchronizacja</strong> — połącz folder Google Drive lub wgraj CSV ręcznie</div>
+    <button class="btn btn-primary" onclick="syncFromDrive()">&#8635; SYNCHRONIZUJ DANE</button>
   </div>
   <div id="dashboard-content" style="display:none">
     <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:4px">
@@ -472,106 +463,40 @@ tr.detail-row.hidden { display: none; }
 
 <!-- IMPORT -->
 <div class="panel" id="panel-import">
-
-  <div class="slabel" style="margin-top:0">GOOGLE DRIVE — AUTOMATYCZNA SYNCHRONIZACJA</div>
-  <div class="drive-setup-box" id="drive-setup-box">
-    <div style="font-size:16px;font-weight:700;margin-bottom:6px">☁️ Podłącz folder Google Drive</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.7">
-      Wklej link do folderu Google Drive. Folder musi być udostępniony publicznie ("Każdy z linkiem może wyświetlać").<br>
-      Dashboard automatycznie pobierze wszystkie CSV — każdy kto otworzy link zobaczy te same dane.
+  <div class="slabel" style="margin-top:0">SYNCHRONIZACJA DANYCH</div>
+  <div style="background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--green);padding:20px 24px;margin-bottom:16px">
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px">&#9729;&#65039; Google Drive — automatyczna synchronizacja</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:16px">
+      Dashboard pobiera dane automatycznie z folderu Google Drive.<br>
+      Wrzuc nowy plik CSV do folderu i kliknij przycisk ponizej.
     </div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:2px">KLUCZ API GOOGLE <span style="color:var(--red)">*wymagany</span></div>
-    <input type="password" id="drive-api-key" class="drive-input"
-      placeholder="AIzaSy..."
-      style="font-family:'IBM Plex Mono',monospace"
-    />
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:10px;margin-bottom:4px;letter-spacing:2px">LINK DO FOLDERU GOOGLE DRIVE</div>
-    <input type="text" id="drive-folder-url" class="drive-input"
-      placeholder="https://drive.google.com/drive/folders/XXXXX?usp=sharing"
-      value="https://drive.google.com/drive/folders/1TeSPMWo7n66jRARsT6eOCDrOIEYFCTgl?usp=sharing"
-    />
-    <div class="flex-row" style="margin-top:10px;gap:10px">
-      <button class="btn btn-blue" onclick="connectDriveFolder()">☁ POŁĄCZ I POBIERZ PLIKI</button>
-      <button class="btn btn-ghost" onclick="clearDriveConfig()">✕ Rozłącz</button>
-    </div>
-    <div id="drive-connect-msg"></div>
+    <button class="btn btn-blue" style="font-size:12px;padding:12px 28px" onclick="syncFromDrive()">&#8635; SYNCHRONIZUJ DANE Z GOOGLE DRIVE</button>
+    <div id="drive-connect-msg" style="margin-top:10px"></div>
     <div id="drive-file-section" style="display:none;margin-top:16px">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">PLIKI CSV W FOLDERZE</div>
-      <div id="drive-file-list" class="drive-file-list" style="background:var(--s2);border:1px solid var(--border);max-height:200px;overflow-y:auto"></div>
-      <div style="margin-top:10px">
-        <button class="btn btn-blue" onclick="loadAllFromDrive()" id="load-all-btn">⬇ ZAŁADUJ WSZYSTKIE DO DASHBOARDU</button>
-      </div>
+      <div id="drive-file-list" class="drive-file-list" style="background:var(--s2);border:1px solid var(--border);max-height:220px;overflow-y:auto"></div>
     </div>
   </div>
-  <div style="background:var(--s1);border:1px solid var(--border);padding:16px 20px;margin-bottom:16px">
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--blue);letter-spacing:2px;margin-bottom:10px">JAK SKONFIGUROWAĆ — INSTRUKCJA KROK PO KROKU</div>
-    <div style="font-size:12px;color:var(--muted);line-height:2.2">
-      <strong style="color:var(--yellow)">KROK 1 — Klucz API Google (raz na zawsze, 5 minut):</strong><br>
-      &nbsp;→ Wejdź na <strong style="color:var(--text)">console.cloud.google.com</strong><br>
-      &nbsp;→ Utwórz nowy projekt (lub wybierz istniejący)<br>
-      &nbsp;→ Menu → <strong style="color:var(--text)">APIs & Services → Library</strong> → wyszukaj <strong style="color:var(--text)">"Google Drive API"</strong> → Włącz<br>
-      &nbsp;→ Menu → <strong style="color:var(--text)">APIs & Services → Credentials</strong> → <strong style="color:var(--text)">Create Credentials → API Key</strong><br>
-      &nbsp;→ Skopiuj klucz i wklej w pole powyżej<br>
-      <strong style="color:var(--yellow)">KROK 2 — Folder Google Drive:</strong><br>
-      &nbsp;→ Kliknij prawym na folder → <strong style="color:var(--text)">Udostępnij</strong><br>
-      &nbsp;→ Ustaw <strong style="color:var(--text)">"Każdy z linkiem może wyświetlać"</strong><br>
-      &nbsp;→ Wklej link do folderu w pole powyżej<br>
-      <strong style="color:var(--yellow)">KROK 3 — Użycie:</strong><br>
-      &nbsp;→ Kliknij <strong style="color:var(--blue)">☁ POŁĄCZ</strong> → <strong style="color:var(--blue)">⬇ ZAŁADUJ</strong><br>
-      &nbsp;→ Nowe pliki CSV w folderze → klikaj <strong style="color:var(--blue)">⟳ SYNCHRONIZUJ</strong>
-    </div>
-  </div>
-  <div class="slabel">LUB WGRAJ PLIKI RĘCZNIE</div>
-
-  <div class="shift-select-block">
-    <div class="shift-select-title">KTÓRA ZMIANA GENERUJE TEN SCORECARD?</div>
-    <div class="shift-select-btns">
-      <button class="shift-big-btn" id="sel-day" onclick="selectImportShift('day')">
-        <div class="sbtn-icon">☀️</div>
-        <div class="sbtn-name">DZIENNA</div>
-        <div class="sbtn-hours">06:00 → 18:00</div>
-      </button>
-      <button class="shift-big-btn" id="sel-night" onclick="selectImportShift('night')">
-        <div class="sbtn-icon">🌙</div>
-        <div class="sbtn-name">NOCNA</div>
-        <div class="sbtn-hours">18:00 → 06:00 (następnego dnia)</div>
-      </button>
-    </div>
-  </div>
-
-  <div class="slabel">WGRAJ PLIKI SCORECARD</div>
-  <div class="import-zone" id="drop-zone">
-    <input type="file" accept=".csv" multiple onchange="handleFileInput(event)" />
-    <div class="import-icon">📂</div>
-    <div class="import-title">Przeciągnij pliki CSV lub kliknij</div>
-    <div class="import-sub">Możesz zaznaczyć wiele plików naraz (Ctrl+klik)<br>lub przeciągnąć cały folder z OneDrive</div>
-    <div class="import-hint">Format nazwy: <code>…-dzienna.csv</code> lub <code>…-nocna.csv</code> — zmiana i data wykrywane automatycznie · duplikaty pomijane</div>
-  </div>
-  <div id="import-msg"></div>
-
-  <div class="slabel" style="margin-top:24px">HISTORIA IMPORTÓW</div>
+  <div class="slabel">HISTORIA IMPORTOW</div>
   <div id="import-history-list">
-    <div style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:16px 0">Brak załadowanych danych</div>
+    <div style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:16px 0">Brak zaladowanych danych</div>
   </div>
-
   <div class="slabel" style="margin-top:24px">BACKUP / PRZYWRACANIE DANYCH</div>
   <div style="background:var(--s1);border:1px solid var(--border);padding:18px 20px;">
     <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
-      Dane są zapisywane automatycznie w przeglądarce (localStorage). Znikną jeśli wyczyścisz cache.<br>
-      Zrób eksport JSON regularnie jako backup — możesz go przywrócić w dowolnym momencie.
+      Dane sa zapisywane automatycznie w przegladarce. Zrob eksport JSON regularnie jako backup.
     </div>
     <div class="flex-row" style="gap:10px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="exportBackup()">⬇ EKSPORT JSON</button>
+      <button class="btn btn-primary" onclick="exportBackup()">&#8595; EKSPORT JSON</button>
       <div style="position:relative;display:inline-block">
-        <button class="btn btn-ghost" onclick="document.getElementById('restore-input').click()">⬆ IMPORTUJ BACKUP</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('restore-input').click()">&#8593; IMPORTUJ BACKUP</button>
         <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(event)" />
       </div>
-      <button class="btn btn-danger" style="padding:9px 18px;font-size:10px" onclick="clearAllData()">✕ WYCZYŚĆ WSZYSTKIE DANE</button>
+      <button class="btn btn-danger" style="padding:9px 18px;font-size:10px" onclick="clearAllData()">&#10005; WYCZYSC WSZYSTKIE DANE</button>
     </div>
     <div id="backup-msg"></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:12px" id="storage-info"></div>
   </div>
-
 </div><!-- /panel-import -->
 
 <!-- FULL TABLE -->
@@ -688,8 +613,8 @@ const STORAGE_KEY = 'uph_tracker_data_v1';
 // GOOGLE DRIVE INTEGRATION — uses Drive API v3 (public API key, read-only)
 // ============================================================
 const DRIVE_KEY = 'uph_tracker_drive_v1';
-let driveFolderId = '';
-let driveApiKey = '';
+let driveFolderId = '1TeSPMWo7n66jRARsT6eOCDrOIEYFCTgl';
+let driveApiKey = 'AIzaSyC4WRvJRjN6GDxvqP3bzhizdT413oj3Liw';
 let driveFiles = [];
 
 function extractFolderId(url) {
@@ -864,24 +789,7 @@ function clearDriveConfig() {
   showMsg('drive-connect-msg', '✓ Rozłączono', 'ok');
 }
 
-function loadDriveConfig() {
-  try {
-    const raw = localStorage.getItem(DRIVE_KEY);
-    if (!raw) return;
-    const cfg = JSON.parse(raw);
-    if (cfg.folderId && cfg.apiKey) {
-      driveFolderId = cfg.folderId;
-      driveApiKey = cfg.apiKey;
-      const inp = document.getElementById('drive-folder-url');
-      if (inp) inp.value = cfg.url || '';
-      const keyInp = document.getElementById('drive-api-key');
-      if (keyInp) keyInp.value = cfg.apiKey;
-      document.getElementById('sync-btn').disabled = false;
-      document.getElementById('sync-status').textContent = `☁ Folder zapisany · kliknij SYNCHRONIZUJ aby pobrać nowe pliki`;
-      document.getElementById('drive-setup-box').classList.add('connected');
-    }
-  } catch(e) {}
-}
+function loadDriveConfig(){}
 
 // ============================================================
 // LOCALSTORAGE PERSISTENCE
@@ -1020,12 +928,8 @@ function updateGoal() {
 // ============================================================
 // SHIFT LOGIC
 // ============================================================
-function selectImportShift(s) {
-  importShift = s;
-  document.getElementById('sel-day').className = 'shift-big-btn' + (s==='day' ? ' sel-day' : '');
-  document.getElementById('sel-night').className = 'shift-big-btn' + (s==='night' ? ' sel-night' : '');
-}
-selectImportShift('day');
+function selectImportShift(s){importShift=s;}
+
 
 function setActiveShift(s) {
   activeShift = s;
@@ -1908,7 +1812,7 @@ function switchTab(id, el) {
 // INIT — load from localStorage on startup
 // ============================================================
 setupDragDrop();
-selectImportShift('day');
+
 
 (function init() {
   const loaded = loadFromStorage();
@@ -1925,7 +1829,7 @@ selectImportShift('day');
     updateShiftDateInfo();
   }
   updateStorageInfo();
-  loadDriveConfig();
+  syncFromDrive().catch(e=>console.warn("auto-sync",e));
 })();
 </script>
 </body>
