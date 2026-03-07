@@ -679,7 +679,7 @@ async function connectDriveFolder() {
     renderDriveFileList(files);
     document.getElementById('drive-file-section').style.display = 'block';
     document.getElementById('drive-setup-box').classList.add('connected');
-    document.getElementById('sync-btn').disabled = false;
+    const _sb=document.getElementById('sync-btn'); if(_sb) _sb.disabled=false;
     document.getElementById('sync-status').textContent = `☁ Połączono · ${files.length} plików CSV w folderze`;
     showMsg('drive-connect-msg', `✓ Połączono! Znaleziono ${files.length} plików CSV`, 'ok');
   } catch(e) {
@@ -708,7 +708,7 @@ function renderDriveFileList(files) {
 async function loadAllFromDrive() {
   if (!driveFiles.length) return;
   const btn = document.getElementById('load-all-btn');
-  btn.disabled = true; btn.textContent = '⟳ Pobieranie...';
+  if(btn) { btn.disabled = true; btn.textContent = '⟳ Pobieranie...'; }
   let loaded = 0, skipped = 0, errors = [];
 
   for (const file of driveFiles) {
@@ -732,7 +732,7 @@ async function loadAllFromDrive() {
   document.getElementById('no-data-msg').style.display = allData.length ? 'none' : 'block';
   document.getElementById('dashboard-content').style.display = allData.length ? 'block' : 'none';
   updateShiftDateInfo(); renderDriveFileList(driveFiles);
-  btn.disabled = false; btn.textContent = '⬇ ZAŁADUJ WSZYSTKIE DO DASHBOARDU';
+  if(btn) { btn.disabled = false; btn.textContent = '⬇ ZAŁADUJ WSZYSTKIE DO DASHBOARDU'; }
 
   let msg = `✓ Załadowano ${loaded} nowych plików`;
   if (skipped) msg += ` · pominięto ${skipped} (już załadowane)`;
@@ -744,28 +744,32 @@ async function loadAllFromDrive() {
 async function syncFromDrive() {
   if (!driveFolderId || !driveApiKey) return;
   const btn = document.getElementById('sync-btn');
-  btn.disabled = true; btn.innerHTML = '<span class="sync-spinner">⟳</span> SYNC...';
-  document.getElementById('sync-status').textContent = 'Sprawdzanie nowych plików...';
+  const statusEl = document.getElementById('sync-status');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="sync-spinner">⟳</span> SYNC...'; }
+  if (statusEl) statusEl.textContent = 'Sprawdzanie nowych plikow...';
 
   try {
     const files = await fetchDriveFolderFiles(driveFolderId);
     driveFiles = files;
     const newFiles = files.filter(f => !history.some(h => h.fileName === f.name));
     renderDriveFileList(files);
-    document.getElementById('drive-file-section').style.display = 'block';
+    const fileSection = document.getElementById('drive-file-section');
+    if (fileSection) fileSection.style.display = 'block';
 
     if (newFiles.length > 0) {
-      document.getElementById('sync-status').textContent = `Znaleziono ${newFiles.length} nowych plików — ładowanie...`;
+      if (statusEl) statusEl.textContent = 'Znaleziono ' + newFiles.length + ' nowych plikow — ladowanie...';
       await loadAllFromDrive();
-      document.getElementById('sync-status').textContent = `☁ Zsynchronizowano · ${files.length} plików`;
+      if (statusEl) statusEl.textContent = '&#9729; Zsynchronizowano · ' + files.length + ' plikow';
     } else {
-      document.getElementById('sync-status').textContent = `✓ Wszystko aktualne · ${files.length} plików · ${new Date().toLocaleTimeString('pl-PL')}`;
+      if (statusEl) statusEl.textContent = '&#10003; Wszystko aktualne · ' + files.length + ' plikow · ' + new Date().toLocaleTimeString('pl-PL');
     }
   } catch(e) {
-    document.getElementById('sync-status').textContent = `✗ Błąd sync: ${e.message}`;
+    if (statusEl) statusEl.textContent = '&#10007; Blad sync: ' + e.message;
+    const msg = document.getElementById('drive-connect-msg');
+    if (msg) msg.innerHTML = '<div class="msg err">&#10007; ' + e.message + '</div>';
   }
 
-  btn.disabled = false; btn.innerHTML = '⟳ SYNCHRONIZUJ';
+  if (btn) { btn.disabled = false; btn.textContent = '&#8635; SYNCHRONIZUJ'; }
   updateSyncBar();
 }
 
@@ -784,7 +788,7 @@ function clearDriveConfig() {
   const sec = document.getElementById('drive-file-section');
   if (sec) sec.style.display = 'none';
   document.getElementById('drive-setup-box').classList.remove('connected');
-  document.getElementById('sync-btn').disabled = true;
+  const _sb2=document.getElementById('sync-btn'); if(_sb2) _sb2.disabled=true;
   document.getElementById('sync-status').textContent = 'Skonfiguruj folder Google Drive w zakładce Import →';
   showMsg('drive-connect-msg', '✓ Rozłączono', 'ok');
 }
