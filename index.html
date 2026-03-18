@@ -1053,6 +1053,11 @@ function parseSingleCSV(file, text) {
   return { parsed, dateStr, shift, avg, skipped: false };
 }
 
+function parseSingleCSVText(fileName, text) {
+  return parseSingleCSV({ name: fileName }, text);
+}
+
+
 function parseCSV(text) {
   // Remove BOM
   text = text.replace(/^\uFEFF/, '');
