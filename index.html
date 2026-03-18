@@ -647,8 +647,8 @@ async function fetchDriveFolderFiles(folderId) {
 }
 
 async function connectDriveFolder() {
-  const urlInput = document.getElementById('drive-folder-url').value.trim();
-  const keyInput = document.getElementById('drive-api-key').value.trim();
+  const urlInput = document.getElementById('drive-folder-url')?.value.trim();
+  const keyInput = document.getElementById('drive-api-key')?.value.trim();
   const folderId = extractFolderId(urlInput);
 
   if (!keyInput) {
@@ -678,7 +678,7 @@ async function connectDriveFolder() {
     driveFiles = files;
     renderDriveFileList(files);
     document.getElementById('drive-file-section').style.display = 'block';
-    document.getElementById('drive-setup-box').classList.add('connected');
+    document.getElementById('drive-setup-box')?.classList.add('connected');
     const _sb=document.getElementById('sync-btn'); if(_sb) _sb.disabled=false;
     document.getElementById('sync-status').textContent = `☁ Połączono · ${files.length} plików CSV w folderze`;
     showMsg('drive-connect-msg', `✓ Połączono! Znaleziono ${files.length} plików CSV`, 'ok');
@@ -787,7 +787,7 @@ function clearDriveConfig() {
   if (keyInp) keyInp.value = '';
   const sec = document.getElementById('drive-file-section');
   if (sec) sec.style.display = 'none';
-  document.getElementById('drive-setup-box').classList.remove('connected');
+  document.getElementById('drive-setup-box')?.classList.remove('connected');
   const _sb2=document.getElementById('sync-btn'); if(_sb2) _sb2.disabled=true;
   document.getElementById('sync-status').textContent = 'Skonfiguruj folder Google Drive w zakładce Import →';
   showMsg('drive-connect-msg', '✓ Rozłączono', 'ok');
@@ -937,8 +937,8 @@ function selectImportShift(s){importShift=s;}
 
 function setActiveShift(s) {
   activeShift = s;
-  document.getElementById('btn-day').className = 'shift-btn' + (s==='day' ? ' active-day' : '');
-  document.getElementById('btn-night').className = 'shift-btn' + (s==='night' ? ' active-night' : '');
+  document.getElementById('btn-day')?.className = 'shift-btn' + (s==='day' ? ' active-day' : '');
+  document.getElementById('btn-night')?.className = 'shift-btn' + (s==='night' ? ' active-night' : '');
   refreshDashboard();
   refreshTable();
   refreshDiagnosis();
@@ -1120,10 +1120,10 @@ function extractDate(filename, rows) {
 
 function updateShiftDateInfo() {
   const active = getActiveData();
-  if (!active.length) { document.getElementById('shift-date-info').textContent = 'Brak danych'; return; }
+  if (!active.length) { document.getElementById('shift-date-info')?.textContent = 'Brak danych'; return; }
   const h = history.filter(x=>x.shift===activeShift);
   const last = h[h.length-1];
-  document.getElementById('shift-date-info').textContent = last ? `${last.date} · ${active.length} pickerów` : `${active.length} pickerów`;
+  document.getElementById('shift-date-info')?.textContent = last ? `${last.date} · ${active.length} pickerów` : `${active.length} pickerów`;
 }
 
 function showMsg(id, text, type) {
@@ -1833,7 +1833,7 @@ setupDragDrop();
     updateShiftDateInfo();
   }
   updateStorageInfo();
-  syncFromDrive().catch(e=>console.warn("auto-sync",e));
+  setTimeout(()=>syncFromDrive().catch(e=>console.warn("auto-sync",e)),200);
 })();
 </script>
 </body>
