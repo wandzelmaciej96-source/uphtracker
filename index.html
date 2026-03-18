@@ -677,10 +677,10 @@ async function connectDriveFolder() {
     }
     driveFiles = files;
     renderDriveFileList(files);
-    (document.getElementById('drive-file-section')||{style:{}}).style.display = 'block';
+    document.getElementById('drive-file-section').style.display = 'block';
     document.getElementById('drive-setup-box')?.classList.add('connected');
     const _sb=document.getElementById('sync-btn'); if(_sb) _sb.disabled=false;
-    (document.getElementById('sync-status')||{}).textContent = `☁ Połączono · ${files.length} plików CSV w folderze`;
+    document.getElementById('sync-status').textContent = `☁ Połączono · ${files.length} plików CSV w folderze`;
     showMsg('drive-connect-msg', `✓ Połączono! Znaleziono ${files.length} plików CSV`, 'ok');
   } catch(e) {
     showMsg('drive-connect-msg', `✗ Błąd: ${e.message}`, 'err');
@@ -729,8 +729,8 @@ async function loadAllFromDrive() {
   sortHistory(); saveToStorage();
   if (history.length) setActiveShift(history[history.length-1].shift);
   renderImportHistory(); populateDateFilter();
-  (document.getElementById('no-data-msg')||{style:{}}).style.display = allData.length ? 'none' : 'block';
-  (document.getElementById('dashboard-content')||{style:{}}).style.display = allData.length ? 'block' : 'none';
+  document.getElementById('no-data-msg').style.display = allData.length ? 'none' : 'block';
+  document.getElementById('dashboard-content').style.display = allData.length ? 'block' : 'none';
   updateShiftDateInfo(); renderDriveFileList(driveFiles);
   if(btn) { btn.disabled = false; btn.textContent = '⬇ ZAŁADUJ WSZYSTKIE DO DASHBOARDU'; }
 
@@ -789,7 +789,7 @@ function clearDriveConfig() {
   if (sec) sec.style.display = 'none';
   document.getElementById('drive-setup-box')?.classList.remove('connected');
   const _sb2=document.getElementById('sync-btn'); if(_sb2) _sb2.disabled=true;
-  (document.getElementById('sync-status')||{}).textContent = 'Skonfiguruj folder Google Drive w zakładce Import →';
+  document.getElementById('sync-status').textContent = 'Skonfiguruj folder Google Drive w zakładce Import →';
   showMsg('drive-connect-msg', '✓ Rozłączono', 'ok');
 }
 
@@ -831,11 +831,11 @@ function loadFromStorage() {
 function updateStorageInfo() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) { (document.getElementById('storage-info')||{}).textContent = 'Brak zapisanych danych'; return; }
+    if (!raw) { document.getElementById('storage-info').textContent = 'Brak zapisanych danych'; return; }
     const kb = (raw.length * 2 / 1024).toFixed(1);
     const payload = JSON.parse(raw);
     const saved = payload.savedAt ? new Date(payload.savedAt).toLocaleString('pl-PL') : '—';
-    (document.getElementById('storage-info')||{}).textContent =
+    document.getElementById('storage-info').textContent =
       `Zapisano: ${saved} · Rozmiar: ${kb} KB · ${history.length} zmian w bazie`;
   } catch(e) {}
 }
@@ -884,12 +884,12 @@ function importBackup(event) {
       history.forEach(h => allData = allData.concat(h.data));
       sortHistory();
       saveToStorage();
-      (document.getElementById('uph-goal-input')||{}).value = uphGoal;
+      document.getElementById('uph-goal-input').value = uphGoal;
       // Activate last shift
       if (history.length) setActiveShift(history[history.length-1].shift);
       renderImportHistory(); populateDateFilter();
-      (document.getElementById('no-data-msg')||{style:{}}).style.display = allData.length ? 'none' : 'block';
-      (document.getElementById('dashboard-content')||{style:{}}).style.display = allData.length ? 'block' : 'none';
+      document.getElementById('no-data-msg').style.display = allData.length ? 'none' : 'block';
+      document.getElementById('dashboard-content').style.display = allData.length ? 'block' : 'none';
       updateShiftDateInfo();
       refreshDashboard(); refreshDiagnosis();
       showMsg('backup-msg', `✓ Przywrócono ${history.length} zmian z backupu`, 'ok');
@@ -906,16 +906,16 @@ function clearAllData() {
   history = []; allData = [];
   localStorage.removeItem(STORAGE_KEY);
   renderImportHistory(); populateDateFilter();
-  (document.getElementById('import-history-list')||{}).innerHTML =
+  document.getElementById('import-history-list').innerHTML =
     '<div style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:16px 0">Brak załadowanych danych</div>';
-  (document.getElementById('no-data-msg')||{style:{}}).style.display = 'block';
-  (document.getElementById('dashboard-content')||{style:{}}).style.display = 'none';
-  (document.getElementById('h-avg')||{}).textContent = '—';
-  (document.getElementById('h-best')||{}).textContent = '—';
-  (document.getElementById('h-crit')||{}).textContent = '—';
-  (document.getElementById('h-pickers')||{}).textContent = '—';
-  (document.getElementById('h-total')||{}).textContent = '—';
-  (document.getElementById('diag-output')||{}).innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak danych</div><div class="diag-body">Wgraj scorecard CSV, aby zobaczyć diagnozę.</div></div>';
+  document.getElementById('no-data-msg').style.display = 'block';
+  document.getElementById('dashboard-content').style.display = 'none';
+  document.getElementById('h-avg').textContent = '—';
+  document.getElementById('h-best').textContent = '—';
+  document.getElementById('h-crit').textContent = '—';
+  document.getElementById('h-pickers').textContent = '—';
+  document.getElementById('h-total').textContent = '—';
+  document.getElementById('diag-output').innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak danych</div><div class="diag-body">Wgraj scorecard CSV, aby zobaczyć diagnozę.</div></div>';
   updateStorageInfo();
   showMsg('backup-msg', '✓ Wszystkie dane usunięte', 'ok');
 }
@@ -937,11 +937,7 @@ function selectImportShift(s){importShift=s;}
 
 function setActiveShift(s) {
   activeShift = s;
-  document.getElementById('btn-day')?.className = 'shift-btn' + (s==='day' ? ' active-day' : '');
-  document.getElementById('btn-night')?.className = 'shift-btn' + (s==='night' ? ' active-night' : '');
-  refreshDashboard();
-  refreshTable();
-  refreshDiagnosis();
+  refreshDashboard(); refreshTable(); refreshDiagnosis();
 }
 
 function getActiveData() {
@@ -1016,8 +1012,8 @@ function processFiles(files) {
         if (history.length) setActiveShift(history[history.length-1].shift);
         renderImportHistory();
         populateDateFilter();
-        (document.getElementById('no-data-msg')||{style:{}}).style.display = 'none';
-        (document.getElementById('dashboard-content')||{style:{}}).style.display = 'block';
+        document.getElementById('no-data-msg').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = 'block';
         updateShiftDateInfo();
 
         let msg = `✓ Załadowano ${loaded} nowych zmian`;
@@ -1118,9 +1114,7 @@ function extractDate(filename, rows) {
   return new Date().toLocaleDateString('pl-PL');
 }
 
-function updateShiftDateInfo() {
-  const active = getActiveData();
-  if (!active.length) { document.getElementById('shift-date-info')?.textContent = 'Brak danych'; return; }
+function updateShiftDateInfo() {}
   const h = history.filter(x=>x.shift===activeShift);
   const last = h[h.length-1];
   document.getElementById('shift-date-info')?.textContent = last ? `${last.date} · ${active.length} pickerów` : `${active.length} pickerów`;
@@ -1161,19 +1155,19 @@ function removeHistory(i) {
   // If no more data for active shift, clear header
   const remaining = getActiveData();
   if (!remaining.length) {
-    (document.getElementById('h-avg')||{}).textContent = '—';
-    (document.getElementById('h-best')||{}).textContent = '—';
-    (document.getElementById('h-crit')||{}).textContent = '—';
-    (document.getElementById('h-pickers')||{}).textContent = '—';
-    (document.getElementById('h-total')||{}).textContent = '—';
-    (document.getElementById('goal-pct')||{}).textContent = '';
-    (document.getElementById('kpi-cards')||{}).innerHTML = '';
-    (document.getElementById('top10')||{}).innerHTML = '';
-    (document.getElementById('bot10')||{}).innerHTML = '';
-    (document.getElementById('non-pickers')||{}).innerHTML = '';
+    document.getElementById('h-avg').textContent = '—';
+    document.getElementById('h-best').textContent = '—';
+    document.getElementById('h-crit').textContent = '—';
+    document.getElementById('h-pickers').textContent = '—';
+    document.getElementById('h-total').textContent = '—';
+    document.getElementById('goal-pct').textContent = '';
+    document.getElementById('kpi-cards').innerHTML = '';
+    document.getElementById('top10').innerHTML = '';
+    document.getElementById('bot10').innerHTML = '';
+    document.getElementById('non-pickers').innerHTML = '';
     if (!allData.length) {
-      (document.getElementById('no-data-msg')||{style:{}}).style.display = 'block';
-      (document.getElementById('dashboard-content')||{style:{}}).style.display = 'none';
+      document.getElementById('no-data-msg').style.display = 'block';
+      document.getElementById('dashboard-content').style.display = 'none';
     }
   } else {
     refreshDashboard();
@@ -1204,23 +1198,23 @@ function refreshDashboard() {
   const totalPick = data.reduce((s,r)=>s+r.quantityPicked,0);
 
   // Header — based on real pickers only
-  (document.getElementById('h-avg')||{}).textContent = avg;
-  (document.getElementById('h-avg')||{}).className = 'hkpi-val ' + (avg>=uphGoal?'g':avg>=uphGoal*0.75?'y':'r');
-  (document.getElementById('h-best')||{}).textContent = best;
-  (document.getElementById('h-crit')||{}).textContent = belowGoal;
-  (document.getElementById('h-pickers')||{}).textContent = pickers.length;
-  (document.getElementById('h-total')||{}).textContent = totalPick.toLocaleString('pl-PL');
+  document.getElementById('h-avg').textContent = avg;
+  document.getElementById('h-avg').className = 'hkpi-val ' + (avg>=uphGoal?'g':avg>=uphGoal*0.75?'y':'r');
+  document.getElementById('h-best').textContent = best;
+  document.getElementById('h-crit').textContent = belowGoal;
+  document.getElementById('h-pickers').textContent = pickers.length;
+  document.getElementById('h-total').textContent = totalPick.toLocaleString('pl-PL');
 
   // Goal widget info
   const goalPct = Math.round(avg/uphGoal*100);
-  (document.getElementById('goal-pct')||{}).textContent =
+  document.getElementById('goal-pct').textContent =
     `Zespół na ${goalPct}% celu · ${pickers.filter(r=>r.uph>=uphGoal).length}/${pickers.length} pickerów osiąga cel`;
 
   // KPI cards
   const spread = best - worst;
   const avgRejects = (pickers.reduce((s,r)=>s+r.noOfRejects,0)/pickers.length).toFixed(1);
   const aboveGoal = pickers.filter(r=>r.uph>=uphGoal).length;
-  (document.getElementById('kpi-cards')||{}).innerHTML = [
+  document.getElementById('kpi-cards').innerHTML = [
     { label:'Śr. UPH', val: avg, cls: avg>=uphGoal?'g':avg>=uphGoal*0.75?'y':'r', sub: `Cel: ${uphGoal} UPH` },
     { label:`Poniżej celu (${uphGoal})`, val: belowGoal, cls:'r', sub: `${Math.round(belowGoal/pickers.length*100)}% zespołu` },
     { label:`Osiąga cel (≥${uphGoal})`, val: aboveGoal, cls:'g', sub: `${Math.round(aboveGoal/pickers.length*100)}% zespołu` },
@@ -1232,11 +1226,11 @@ function refreshDashboard() {
   const sorted = [...pickers].sort((a,b)=>b.uph-a.uph);
   const top10 = sorted.slice(0,10);
   const bot10 = sorted.slice(-10).reverse();
-  (document.getElementById('top10')||{}).innerHTML = top10.map((r,i)=>`
+  document.getElementById('top10').innerHTML = top10.map((r,i)=>`
     <tr><td style="color:var(--muted)">${i+1}</td><td>${r.fullName}</td>
     <td style="color:${uphColor(r.uph, uphGoal)};font-weight:700">${r.uph}</td>
     <td>${r.quantityPicked.toLocaleString()}</td><td>${r.daysSinceHired}d</td></tr>`).join('');
-  (document.getElementById('bot10')||{}).innerHTML = bot10.map((r,i)=>`
+  document.getElementById('bot10').innerHTML = bot10.map((r,i)=>`
     <tr><td style="color:var(--muted)">${sorted.length-Math.min(9,sorted.length-1)+i}</td><td>${r.fullName}</td>
     <td style="color:${uphColor(r.uph, uphGoal)};font-weight:700">${r.uph}</td>
     <td>${r.quantityPicked.toLocaleString()}</td><td>${r.daysSinceHired}d</td></tr>`).join('');
@@ -1244,7 +1238,7 @@ function refreshDashboard() {
   // Non-pickers table
   if(nonPickers.length) {
     const npSorted = [...nonPickers].sort((a,b)=>b.quantityPicked-a.quantityPicked);
-    (document.getElementById('non-pickers')||{}).innerHTML = npSorted.map((r,i)=>`
+    document.getElementById('non-pickers').innerHTML = npSorted.map((r,i)=>`
       <tr>
         <td style="color:var(--muted)">${i+1}</td>
         <td>${r.fullName}</td>
@@ -1254,7 +1248,7 @@ function refreshDashboard() {
         <td style="color:var(--muted)">${r.daysSinceHired}d</td>
       </tr>`).join('');
   } else {
-    (document.getElementById('non-pickers')||{}).innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:12px">Brak osób z <50 szt.</td></tr>';
+    document.getElementById('non-pickers').innerHTML = '<tr><td colspan="6" style="color:var(--muted);text-align:center;padding:12px">Brak osób z <50 szt.</td></tr>';
   }
 
   // Dist chart — pickers only, with goal line annotation via plugin-free approach
@@ -1374,7 +1368,7 @@ function filterTable() {
     return sortAsc ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
   });
 
-  (document.getElementById('table-count')||{}).textContent = `${workers.length} pracowników · ${data.length} zmian`;
+  document.getElementById('table-count').textContent = `${workers.length} pracowników · ${data.length} zmian`;
 
   const tbody = document.getElementById('main-tbody');
   tbody.innerHTML = '';
@@ -1497,7 +1491,7 @@ function sortBy(key) {
 function refreshDiagnosis() {
   const allD = getActiveData();
   if (!allD.length) {
-    (document.getElementById('diag-output')||{}).innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak danych</div><div class="diag-body">Wgraj scorecard CSV, aby zobaczyć diagnozę.</div></div>';
+    document.getElementById('diag-output').innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak danych</div><div class="diag-body">Wgraj scorecard CSV, aby zobaczyć diagnozę.</div></div>';
     if(charts.scatter) { charts.scatter.destroy(); charts.scatter = null; }
     return;
   }
@@ -1509,7 +1503,7 @@ function refreshDiagnosis() {
     return true;
   });
   if (!data.length) {
-    (document.getElementById('diag-output')||{}).innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak aktywnych pickerów</div><div class="diag-body">Po odfilterowaniu funkcyjnych i krótkich zmian — brak danych do diagnozy.</div></div>';
+    document.getElementById('diag-output').innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak aktywnych pickerów</div><div class="diag-body">Po odfilterowaniu funkcyjnych i krótkich zmian — brak danych do diagnozy.</div></div>';
     return;
   }
 
@@ -1554,7 +1548,7 @@ function refreshDiagnosis() {
     body:`Wysokie rejecty mogą oznaczać: problemy z lokacjami, spieszenie się kosztem jakości, lub nieznajomość produktu.`,
     action:`→ High-UPH + high-rejects: picker się spieszy. Low-UPH + high-rejects: problem lokacyjny.`});
 
-  (document.getElementById('diag-output')||{}).innerHTML = excludedNote + diags.map(d=>`
+  document.getElementById('diag-output').innerHTML = excludedNote + diags.map(d=>`
     <div class="diag-card ${d.cls}">
       <div class="diag-title">${d.icon} ${d.title}</div>
       <div class="diag-body">${d.body}</div>
@@ -1642,9 +1636,9 @@ function refreshHistoryPanel() {
 
   // DAY-BY-DAY COMPARISON TABLE
   if(!allDates.length) {
-    (document.getElementById('day-compare-tbody')||{}).innerHTML = '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:20px">Brak danych</td></tr>';
+    document.getElementById('day-compare-tbody').innerHTML = '<tr><td colspan="8" style="color:var(--muted);text-align:center;padding:20px">Brak danych</td></tr>';
   } else {
-    (document.getElementById('day-compare-tbody')||{}).innerHTML = [...allDates].reverse().map(date => {
+    document.getElementById('day-compare-tbody').innerHTML = [...allDates].reverse().map(date => {
       const d = parseDateStr(date);
       const dayName = DAY_NAMES[d.getDay()];
       const dRec = dayH.find(h=>h.date===date);
@@ -1684,9 +1678,9 @@ function refreshHistoryPanel() {
 
   const wkKeys = Object.keys(weeks).sort().reverse();
   if(!wkKeys.length) {
-    (document.getElementById('weekly-summary')||{}).innerHTML = '<div style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:16px 0">Brak danych tygodniowych</div>';
+    document.getElementById('weekly-summary').innerHTML = '<div style="color:var(--muted);font-family:\'IBM Plex Mono\',monospace;font-size:11px;padding:16px 0">Brak danych tygodniowych</div>';
   } else {
-    (document.getElementById('weekly-summary')||{}).innerHTML = wkKeys.map((wk, wi) => {
+    document.getElementById('weekly-summary').innerHTML = wkKeys.map((wk, wi) => {
       const w = weeks[wk];
       const allShifts = [...w.day,...w.night];
       const wAvg = allShifts.length ? Math.round(allShifts.reduce((s,h)=>s+h.avg,0)/allShifts.length) : null;
@@ -1734,7 +1728,7 @@ function refreshHistoryPanel() {
   }
 
   // LIST OF ALL SHIFTS
-  (document.getElementById('history-panel')||{}).innerHTML = history.length ? '<div class="hist-list">' + [...history].reverse().map((h,i) => {
+  document.getElementById('history-panel').innerHTML = history.length ? '<div class="hist-list">' + [...history].reverse().map((h,i) => {
     const idx = history.length-1-i;
     return `<div class="hist-item">
       <div class="hist-shift-dot" style="background:${h.shift==='day'?'var(--day)':'var(--night)'}"></div>
@@ -1822,14 +1816,14 @@ setupDragDrop();
   const loaded = loadFromStorage();
   if (loaded && history.length) {
     // Restore goal input
-    (document.getElementById('uph-goal-input')||{}).value = uphGoal;
+    document.getElementById('uph-goal-input').value = uphGoal;
     // Activate last shift in history
     const lastShift = history[history.length - 1].shift;
     setActiveShift(lastShift);
     renderImportHistory();
     populateDateFilter();
-    (document.getElementById('no-data-msg')||{style:{}}).style.display = 'none';
-    (document.getElementById('dashboard-content')||{style:{}}).style.display = 'block';
+    document.getElementById('no-data-msg').style.display = 'none';
+    document.getElementById('dashboard-content').style.display = 'block';
     updateShiftDateInfo();
   }
   updateStorageInfo();
