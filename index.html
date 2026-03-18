@@ -465,7 +465,7 @@ tr.detail-row.hidden { display: none; }
 <div class="panel" id="panel-import">
   <div class="slabel" style="margin-top:0">SYNCHRONIZACJA DANYCH</div>
   <div style="background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--green);padding:20px 24px;margin-bottom:16px">
-    <div style="font-size:16px;font-weight:700;margin-bottom:8px">&#9729;&#65039; Google Drive — automatyczna synchronizacja</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px">&#9729;&#65039; Google Drive &mdash; automatyczna synchronizacja</div>
     <div style="font-size:12px;color:var(--muted);line-height:1.8;margin-bottom:16px">
       Dashboard pobiera dane automatycznie z folderu Google Drive.<br>
       Wrzuc nowy plik CSV do folderu i kliknij przycisk ponizej.
@@ -474,25 +474,22 @@ tr.detail-row.hidden { display: none; }
     <div id="drive-connect-msg" style="margin-top:10px"></div>
     <div id="drive-file-section" style="display:none;margin-top:16px">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;margin-bottom:8px">PLIKI CSV W FOLDERZE</div>
-      <div id="drive-file-list" class="drive-file-list" style="background:var(--s2);border:1px solid var(--border);max-height:220px;overflow-y:auto"></div>
+      <div id="drive-file-list" style="background:var(--s2);border:1px solid var(--border);max-height:220px;overflow-y:auto"></div>
     </div>
   </div>
   <div class="slabel">HISTORIA IMPORTOW</div>
   <div id="import-history-list">
     <div style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:16px 0">Brak zaladowanych danych</div>
   </div>
-  <div class="slabel" style="margin-top:24px">BACKUP / PRZYWRACANIE DANYCH</div>
+  <div class="slabel" style="margin-top:24px">BACKUP / PRZYWRACANIE</div>
   <div style="background:var(--s1);border:1px solid var(--border);padding:18px 20px;">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
-      Dane sa zapisywane automatycznie w przegladarce. Zrob eksport JSON regularnie jako backup.
-    </div>
     <div class="flex-row" style="gap:10px;flex-wrap:wrap">
       <button class="btn btn-primary" onclick="exportBackup()">&#8595; EKSPORT JSON</button>
       <div style="position:relative;display:inline-block">
         <button class="btn btn-ghost" onclick="document.getElementById('restore-input').click()">&#8593; IMPORTUJ BACKUP</button>
         <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(event)" />
       </div>
-      <button class="btn btn-danger" style="padding:9px 18px;font-size:10px" onclick="clearAllData()">&#10005; WYCZYSC WSZYSTKIE DANE</button>
+      <button class="btn btn-danger" style="padding:9px 18px;font-size:10px" onclick="clearAllData()">&#10005; WYCZYSC DANE</button>
     </div>
     <div id="backup-msg"></div>
     <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:12px" id="storage-info"></div>
@@ -647,8 +644,8 @@ async function fetchDriveFolderFiles(folderId) {
 }
 
 async function connectDriveFolder() {
-  const urlInput = document.getElementById('drive-folder-url')?.value.trim();
-  const keyInput = document.getElementById('drive-api-key')?.value.trim();
+  const urlInput = document.getElementById('drive-folder-url').value.trim();
+  const keyInput = document.getElementById('drive-api-key').value.trim();
   const folderId = extractFolderId(urlInput);
 
   if (!keyInput) {
@@ -678,8 +675,8 @@ async function connectDriveFolder() {
     driveFiles = files;
     renderDriveFileList(files);
     document.getElementById('drive-file-section').style.display = 'block';
-    document.getElementById('drive-setup-box')?.classList.add('connected');
-    const _sb=document.getElementById('sync-btn'); if(_sb) _sb.disabled=false;
+    document.getElementById('drive-setup-box').classList.add('connected');
+    document.getElementById('sync-btn').disabled = false;
     document.getElementById('sync-status').textContent = `☁ Połączono · ${files.length} plików CSV w folderze`;
     showMsg('drive-connect-msg', `✓ Połączono! Znaleziono ${files.length} plików CSV`, 'ok');
   } catch(e) {
@@ -708,69 +705,64 @@ function renderDriveFileList(files) {
 async function loadAllFromDrive() {
   if (!driveFiles.length) return;
   const btn = document.getElementById('load-all-btn');
-  if(btn) { btn.disabled = true; btn.textContent = '⟳ Pobieranie...'; }
+  if (btn) { btn.disabled = true; btn.textContent = '... Pobieranie'; }
   let loaded = 0, skipped = 0, errors = [];
-
   for (const file of driveFiles) {
     try {
       if (history.some(h => h.fileName === file.name)) { skipped++; continue; }
       const csvText = await fetchDriveCSV(file.id);
       const result = parseSingleCSVText(file.name, csvText);
       if (result.skipped) { skipped++; continue; }
-      history.push({
-        date: result.dateStr, shift: result.shift, data: result.parsed,
-        avg: result.avg, fileName: file.name, driveFileId: file.id
-      });
+      history.push({ date: result.dateStr, shift: result.shift, data: result.parsed, avg: result.avg, fileName: file.name, driveFileId: file.id });
       allData = allData.concat(result.parsed);
       loaded++;
-    } catch(e) { errors.push(`${file.name}: ${e.message}`); }
+    } catch(e) { errors.push(file.name + ': ' + e.message); }
   }
-
   sortHistory(); saveToStorage();
   if (history.length) setActiveShift(history[history.length-1].shift);
   renderImportHistory(); populateDateFilter();
-  document.getElementById('no-data-msg').style.display = allData.length ? 'none' : 'block';
-  document.getElementById('dashboard-content').style.display = allData.length ? 'block' : 'none';
+  const noData = document.getElementById('no-data-msg');
+  const dashContent = document.getElementById('dashboard-content');
+  if (noData) noData.style.display = allData.length ? 'none' : 'block';
+  if (dashContent) dashContent.style.display = allData.length ? 'block' : 'none';
   updateShiftDateInfo(); renderDriveFileList(driveFiles);
-  if(btn) { btn.disabled = false; btn.textContent = '⬇ ZAŁADUJ WSZYSTKIE DO DASHBOARDU'; }
-
-  let msg = `✓ Załadowano ${loaded} nowych plików`;
-  if (skipped) msg += ` · pominięto ${skipped} (już załadowane)`;
-  if (errors.length) msg += ` · błędy: ${errors.join(', ')}`;
-  showMsg('drive-connect-msg', msg, errors.length ? 'err' : 'ok');
-  updateSyncBar();
+  if (btn) { btn.disabled = false; btn.textContent = '↳ ZALADUJ WSZYSTKIE'; }
+  const msgEl = document.getElementById('drive-connect-msg');
+  let msg = 'Zaladowano ' + loaded + ' nowych plikow';
+  if (skipped) msg += ' · pominieto ' + skipped;
+  if (errors.length) msg += ' · bledy: ' + errors.join(', ');
+  if (msgEl) msgEl.innerHTML = '<div class="msg ' + (errors.length ? 'err' : 'ok') + '">' + msg + '</div>';
 }
 
 async function syncFromDrive() {
   if (!driveFolderId || !driveApiKey) return;
   const btn = document.getElementById('sync-btn');
   const statusEl = document.getElementById('sync-status');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="sync-spinner">⟳</span> SYNC...'; }
+  const msgEl = document.getElementById('drive-connect-msg');
+  if (btn) { btn.disabled = true; btn.textContent = '... SYNC'; }
   if (statusEl) statusEl.textContent = 'Sprawdzanie nowych plikow...';
-
   try {
     const files = await fetchDriveFolderFiles(driveFolderId);
     driveFiles = files;
     const newFiles = files.filter(f => !history.some(h => h.fileName === f.name));
     renderDriveFileList(files);
-    const fileSection = document.getElementById('drive-file-section');
-    if (fileSection) fileSection.style.display = 'block';
-
+    const sec = document.getElementById('drive-file-section');
+    if (sec) sec.style.display = 'block';
     if (newFiles.length > 0) {
-      if (statusEl) statusEl.textContent = 'Znaleziono ' + newFiles.length + ' nowych plikow — ladowanie...';
+      if (statusEl) statusEl.textContent = 'Znaleziono ' + newFiles.length + ' nowych plikow...';
       await loadAllFromDrive();
-      if (statusEl) statusEl.textContent = '&#9729; Zsynchronizowano · ' + files.length + ' plikow';
+      if (statusEl) statusEl.textContent = 'Zsynchronizowano · ' + files.length + ' plikow';
     } else {
-      if (statusEl) statusEl.textContent = '&#10003; Wszystko aktualne · ' + files.length + ' plikow · ' + new Date().toLocaleTimeString('pl-PL');
+      if (statusEl) statusEl.textContent = 'Wszystko aktualne · ' + files.length + ' plikow · ' + new Date().toLocaleTimeString('pl-PL');
+      if (msgEl) msgEl.innerHTML = '<div class="msg ok">&#10003; Brak nowych plikow · ' + files.length + ' plikow w folderze</div>';
     }
   } catch(e) {
-    if (statusEl) statusEl.textContent = '&#10007; Blad sync: ' + e.message;
-    const msg = document.getElementById('drive-connect-msg');
-    if (msg) msg.innerHTML = '<div class="msg err">&#10007; ' + e.message + '</div>';
+    if (statusEl) statusEl.textContent = 'Blad: ' + e.message;
+    if (msgEl) msgEl.innerHTML = '<div class="msg err">&#10007; ' + e.message + '</div>';
   }
-
-  if (btn) { btn.disabled = false; btn.textContent = '&#8635; SYNCHRONIZUJ'; }
-  updateSyncBar();
+  if (btn) { btn.disabled = false; btn.textContent = '↻ SYNCHRONIZUJ'; }
+  const lastEl = document.getElementById('sync-last');
+  if (lastEl) lastEl.textContent = new Date().toLocaleTimeString('pl-PL');
 }
 
 function updateSyncBar() {
@@ -787,13 +779,13 @@ function clearDriveConfig() {
   if (keyInp) keyInp.value = '';
   const sec = document.getElementById('drive-file-section');
   if (sec) sec.style.display = 'none';
-  document.getElementById('drive-setup-box')?.classList.remove('connected');
-  const _sb2=document.getElementById('sync-btn'); if(_sb2) _sb2.disabled=true;
+  document.getElementById('drive-setup-box').classList.remove('connected');
+  document.getElementById('sync-btn').disabled = true;
   document.getElementById('sync-status').textContent = 'Skonfiguruj folder Google Drive w zakładce Import →';
   showMsg('drive-connect-msg', '✓ Rozłączono', 'ok');
 }
 
-function loadDriveConfig(){}
+function loadDriveConfig() {}
 
 // ============================================================
 // LOCALSTORAGE PERSISTENCE
@@ -932,7 +924,7 @@ function updateGoal() {
 // ============================================================
 // SHIFT LOGIC
 // ============================================================
-function selectImportShift(s){importShift=s;}
+function selectImportShift(s) { importShift = s; }
 
 
 function setActiveShift(s) {
@@ -1115,10 +1107,6 @@ function extractDate(filename, rows) {
 }
 
 function updateShiftDateInfo() {}
-  const h = history.filter(x=>x.shift===activeShift);
-  const last = h[h.length-1];
-  document.getElementById('shift-date-info')?.textContent = last ? `${last.date} · ${active.length} pickerów` : `${active.length} pickerów`;
-}
 
 function showMsg(id, text, type) {
   const el = document.getElementById(id);
@@ -1827,7 +1815,7 @@ setupDragDrop();
     updateShiftDateInfo();
   }
   updateStorageInfo();
-  setTimeout(()=>syncFromDrive().catch(e=>console.warn("auto-sync",e)),200);
+  setTimeout(syncFromDrive, 300);
 })();
 </script>
 </body>
