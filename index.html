@@ -10,6 +10,7 @@
 // AI DIAGNOSIS
 // ============================================================
 var aiCache = {};
+var aiExpanded = new Set();
 
 function getWorkerHistory(login) {
   var rows = allData.filter(function(r){ return (r.login||r.fullName)===login; });
@@ -105,6 +106,12 @@ function getUniqueWorkers() {
   return Object.values(map).sort(function(a,b){return a.avgUph-b.avgUph;});
 }
 
+function toggleAIWorker(login) {
+  if(aiExpanded.has(login)) aiExpanded.delete(login);
+  else aiExpanded.add(login);
+  renderAITable();
+}
+
 async function generateAI(login) {
   var ctx = buildWorkerContext(login);
   if(!ctx) return;
@@ -113,24 +120,25 @@ async function generateAI(login) {
   var out = document.getElementById('ai-out-'+sid);
   if(!out) return;
   if(btn){btn.disabled=true;btn.textContent='...';}
-  out.innerHTML='<div style="color:var(--muted);font-size:11px;padding:8px 0"><span class="sync-spinner">&#9679;</span> Generowanie...</div>';
+  out.innerHTML='<div style="color:var(--muted);font-size:12px;padding:12px 0;display:flex;gap:8px;align-items:center">'
+    +'<span class="sync-spinner">&#9679;</span> Generowanie analizy dla: '+ctx.name+'...</div>';
   try {
     var resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
+      method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
         messages:[{role:'user',content:buildPrompt(ctx)}]})
     });
     var data = await resp.json();
     var text = data.content&&data.content[0]?data.content[0].text:'Brak odpowiedzi';
     aiCache[login]={text:text,ts:new Date().toLocaleString('pl-PL')};
-    out.innerHTML='<div style="font-size:12px;line-height:1.9;padding:10px 0;border-top:1px solid var(--border);margin-top:12px">'
-      +highlightAI(text)+'</div>'
-      +'<div style="font-size:9px;color:var(--muted);margin-top:6px">Wygenerowano: '+aiCache[login].ts+'</div>';
+    out.innerHTML='<div style="background:var(--s2);border-left:3px solid var(--purple);padding:14px 18px;margin-top:4px">'
+      +'<div style="font-size:12px;line-height:2.0">'+highlightAI(text)+'</div>'
+      +'<div style="font-size:9px;color:var(--muted);margin-top:10px;font-family:IBM Plex Mono,monospace">Wygenerowano: '+aiCache[login].ts+'</div>'
+      +'</div>';
   } catch(e){
-    out.innerHTML='<div class="msg err">B\u0142\u0105d: '+e.message+'</div>';
+    out.innerHTML='<div class="msg err">Błąd: '+e.message+'</div>';
   }
-  if(btn){btn.disabled=false;btn.textContent='\u21bb Od\u015bwie\u017c';}
+  if(btn){btn.disabled=false;btn.textContent='↻ Odśwież';}
 }
 
 async function generateAllAI() {
@@ -142,7 +150,7 @@ function renderAITable() {
   var wrap=document.getElementById('ai-table-wrap');
   if(!wrap) return;
   if(!allData.length){
-    wrap.innerHTML='<div style="text-align:center;padding:60px;color:var(--muted)">Brak danych &mdash; najpierw zsynchronizuj</div>';
+    wrap.innerHTML='<div style="text-align:center;padding:60px;color:var(--muted)">Brak danych — najpierw zsynchronizuj</div>';
     return;
   }
   var q=(document.getElementById('ai-search')?document.getElementById('ai-search').value:'').toLowerCase();
@@ -155,38 +163,76 @@ function renderAITable() {
     return true;
   });
   var cnt=document.getElementById('ai-count');
-  if(cnt)cnt.textContent=workers.length+' pracownik\u00f3w';
+  if(cnt)cnt.textContent=workers.length+' pracowników';
   var html=workers.map(function(w){
+    var sid=w.login.replace(/[^a-zA-Z0-9_-]/g,'_');
+    var isOpen=aiExpanded.has(w.login);
     var cached=aiCache[w.login];
+    var col=w.avgUph>=uphGoal?'var(--green)':w.avgUph>=uphGoal*0.75?'var(--yellow)':'var(--red)';
     var rows=getWorkerHistory(w.login);
     var delta=rows.length>=2?rows[rows.length-1].uph-rows[0].uph:0;
-    var trend=delta>3?'<span style="color:var(--green)">\u25b2+'+delta+'</span>'
-      :delta<-3?'<span style="color:var(--red)">\u25bc'+Math.abs(delta)+'</span>'
+    var trend=delta>3?'<span style="color:var(--green)">&#9650;+'+delta+'</span>'
+      :delta<-3?'<span style="color:var(--red)">&#9660;'+Math.abs(delta)+'</span>'
       :'<span style="color:var(--muted)">&mdash;</span>';
-    var col=w.avgUph>=uphGoal?'var(--green)':w.avgUph>=uphGoal*0.75?'var(--yellow)':'var(--red)';
-    var sid=w.login.replace(/[^a-zA-Z0-9_-]/g,'_');
-    var ch=cached
-      ?'<div style="font-size:12px;line-height:1.9;padding:10px 0;border-top:1px solid var(--border);margin-top:12px">'+highlightAI(cached.text)+'</div>'
-       +'<div style="font-size:9px;color:var(--muted);margin-top:4px">Wygenerowano: '+cached.ts+'</div>'
-      :'';
-    return '<div class="card" style="margin-bottom:10px">'
-      +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
-      +'<div style="flex:1;min-width:180px">'
-      +'<div style="font-size:15px;font-weight:700">'+w.name+'</div>'
-      +'<div style="font-size:10px;color:var(--muted);margin-top:3px">'+w.shifts+' zmian &middot; '+w.totalPicked.toLocaleString('pl-PL')+' szt. &middot; trend: '+trend+'</div>'
+    var histRows=rows.slice().reverse().map(function(r){
+      var h=history.find(function(h){return h.fileName===r.fileDate;});
+      var dl=h?h.date:r.fileDate;
+      var sl=r.shift==='day'?'<span style="color:var(--day)">&#9728; dzienna</span>':'<span style="color:var(--night)">&#127769; nocna</span>';
+      var uc=r.uph>=uphGoal?'var(--green)':r.uph>=uphGoal*0.75?'var(--yellow)':'var(--red)';
+      return '<tr>'
+        +'<td style="font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 12px">'+dl+'</td>'
+        +'<td style="font-size:11px;padding:6px 12px">'+sl+'</td>'
+        +'<td style="font-weight:700;color:'+uc+';font-family:IBM Plex Mono,monospace;padding:6px 12px">'+r.uph+'</td>'
+        +'<td style="font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 12px">'+r.quantityPicked.toLocaleString('pl-PL')+'</td>'
+        +'<td style="color:var(--muted);font-family:IBM Plex Mono,monospace;font-size:11px;padding:6px 12px">'+r.actualDirectTime+'</td>'
+        +'<td style="color:'+(r.noOfRejects>5?'var(--red)':r.noOfRejects>2?'var(--yellow)':'var(--muted)')+';font-size:11px;padding:6px 12px">'+r.noOfRejects+'</td>'
+        +'</tr>';
+    }).join('');
+    var expandBlock=isOpen?(
+      '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">'
+      +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:3px;color:var(--muted);margin-bottom:8px">HISTORIA ZMIAN</div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'
+      +'<thead><tr style="background:var(--s2)">'
+      +'<th style="font-size:9px;padding:6px 12px;color:var(--muted);text-align:left;font-weight:normal;letter-spacing:2px">DATA</th>'
+      +'<th style="font-size:9px;padding:6px 12px;color:var(--muted);text-align:left;font-weight:normal;letter-spacing:2px">ZMIANA</th>'
+      +'<th style="font-size:9px;padding:6px 12px;color:var(--muted);text-align:left;font-weight:normal;letter-spacing:2px">UPH</th>'
+      +'<th style="font-size:9px;padding:6px 12px;color:var(--muted);text-align:left;font-weight:normal;letter-spacing:2px">SZTUK</th>'
+      +'<th style="font-size:9px;padding:6px 12px;color:var(--muted);text-align:left;font-weight:normal;letter-spacing:2px">DIRECT</th>'
+      +'<th style="font-size:9px;padding:6px 12px;color:var(--muted);text-align:left;font-weight:normal;letter-spacing:2px">REJECTY</th>'
+      +'</tr></thead><tbody>'+histRows+'</tbody></table></div>'
+      +'<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:12px;flex-wrap:wrap">'
+      +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:3px;color:var(--purple)">ANALIZA AI</div>'
+      +'<button id="ai-btn-'+sid+'" class="btn" onclick="event.stopPropagation();generateAI('+JSON.stringify(w.login)+')" '
+      +'style="background:rgba(167,139,250,0.15);border:1px solid var(--purple);color:var(--purple);padding:7px 16px;font-size:10px">'
+      +(cached?'↻ Odśwież analizę':'&#129302; Generuj analizę AI')+'</button>'
       +'</div>'
-      +'<div style="text-align:center;min-width:64px">'
-      +'<div style="font-size:26px;font-weight:700;color:'+col+';line-height:1">'+w.avgUph+'</div>'
-      +'<div style="font-size:9px;color:var(--muted)">\u015ar. UPH</div>'
-      +'</div>'
-      +'<button id="ai-btn-'+sid+'" class="btn" style="background:rgba(167,139,250,0.15);border:1px solid var(--purple);color:var(--purple);padding:8px 16px" onclick="generateAI('+JSON.stringify(w.login)+')">'
-      +(cached?'\u21bb Od\u015bwie\u017c':'&#129302; Analizuj')
-      +'</button>'
-      +'</div>'
-      +'<div id="ai-out-'+sid+'">'+ch+'</div>'
-      +'</div>';
+      +'<div id="ai-out-'+sid+'">'
+      +(cached
+        ?'<div style="background:var(--s2);border-left:3px solid var(--purple);padding:14px 18px">'
+         +'<div style="font-size:12px;line-height:2.0">'+highlightAI(cached.text)+'</div>'
+         +'<div style="font-size:9px;color:var(--muted);margin-top:8px;font-family:IBM Plex Mono,monospace">Wygenerowano: '+cached.ts+'</div>'
+         +'</div>'
+        :'<div style="color:var(--muted);font-size:12px;padding:8px 0">Kliknij przycisk aby wygenerować analizę.</div>')
+      +'</div></div></div>'
+    ):'';
+    return '<div class="card" style="margin-bottom:8px;cursor:pointer" '
+      +'onclick="toggleAIWorker('+JSON.stringify(w.login)+')">'
+      +'<div style="display:flex;align-items:center;gap:12px">'
+      +'<div style="font-size:14px;color:var(--muted);width:16px;flex-shrink:0;font-family:IBM Plex Mono,monospace">'+(isOpen?'&#9660;':'&#9654;')+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:14px;font-weight:700">'+w.name+'</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:IBM Plex Mono,monospace">'
+      +w.shifts+' zmian &middot; '+w.totalPicked.toLocaleString('pl-PL')+' szt. &middot; trend: '+trend
+      +(cached?' &middot; <span style="color:var(--purple)">&#129302; przeanalizowany</span>':'')
+      +'</div></div>'
+      +'<div style="text-align:right;flex-shrink:0">'
+      +'<div style="font-size:24px;font-weight:700;color:'+col+';font-family:IBM Plex Mono,monospace;line-height:1">'+w.avgUph+'</div>'
+      +'<div style="font-size:9px;color:var(--muted)">UPH</div>'
+      +'</div></div>'
+      +expandBlock+'</div>';
   }).join('');
-  wrap.innerHTML=html||'<div style="color:var(--muted);padding:20px">Brak pracownik\u00f3w</div>';
+  wrap.innerHTML=html||'<div style="color:var(--muted);padding:20px">Brak pracowników</div>';
 }
 
 </script>
@@ -776,26 +822,26 @@ tr.detail-row.hidden { display: none; }
 
 <!-- AI DIAGNOSIS -->
 <div class="panel" id="panel-ai">
-  <div class="slabel" style="margin-top:0">DIAGNOZA AI &mdash; WSZYSCY PRACOWNICY</div>
-  <div style="background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--purple);padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
-    <div>
-      <div style="font-size:15px;font-weight:700;margin-bottom:4px">&#129302; Analiza AI dla każdego pracownika</div>
-      <div style="font-size:12px;color:var(--muted)">Kliknij przycisk przy pracowniku aby wygenerować pełną diagnozę: trend, porównanie do zespołu, konkretne akcje i prognozę.</div>
+  <div class="slabel" style="margin-top:0">DIAGNOZA AI — WSZYSCY PRACOWNICY</div>
+  <div style="background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--purple);padding:14px 20px;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--muted);line-height:1.7">
+      Kliknij wiersz pracownika aby rozwinąć historię zmian i uruchomić analizę AI.<br>
+      AI analizuje trend, trudności, porównuje do zespołu i proponuje konkretne działania.
     </div>
-    <button class="btn" style="background:var(--purple);color:#000;font-weight:700;padding:10px 20px;white-space:nowrap" onclick="generateAllAI()">&#129302; ANALIZUJ WSZYSTKICH</button>
   </div>
   <div class="flex-row" style="margin-bottom:12px;gap:8px">
     <input class="search-input" id="ai-search" placeholder="Szukaj pracownika..." oninput="renderAITable()" />
     <select class="search-input" id="ai-filter-status" onchange="renderAITable()" style="width:auto">
       <option value="">Wszyscy</option>
-      <option value="crit">Krytyczni</option>
-      <option value="warn">Słabi</option>
+      <option value="crit">Krytyczni (&lt;75% celu)</option>
+      <option value="warn">Słabi (75–99%)</option>
       <option value="ok">Osiągają cel</option>
     </select>
     <span id="ai-count" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-left:auto"></span>
   </div>
   <div id="ai-table-wrap"></div>
 </div>
+
 </main>
 
 <script>
@@ -2021,13 +2067,14 @@ setupDragDrop();
     updateShiftDateInfo();
   }
   updateStorageInfo();
-  setTimeout(syncFromDrive,300);
+  
 })();
 
 // ============================================================
 // AI DIAGNOSIS
 // ============================================================
 var aiCache = {};
+var aiExpanded = new Set();
 
 function getWorkerHistory(login) {
   var rows = allData.filter(function(r){ return (r.login||r.fullName)===login; });
@@ -2121,6 +2168,12 @@ function getUniqueWorkers() {
     }
   });
   return Object.values(map).sort(function(a,b){return a.avgUph-b.avgUph;});
+}
+
+function toggleAIWorker(login) {
+  if(aiExpanded.has(login)) aiExpanded.delete(login);
+  else aiExpanded.add(login);
+  renderAITable();
 }
 
 async function generateAI(login) {
