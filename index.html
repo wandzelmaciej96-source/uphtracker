@@ -150,20 +150,31 @@ function renderAITable() {
   var wrap=document.getElementById('ai-table-wrap');
   if(!wrap) return;
   if(!allData.length){
-    wrap.innerHTML='<div style="text-align:center;padding:60px;color:var(--muted)">Brak danych — najpierw zsynchronizuj</div>';
+    wrap.innerHTML='<div style="text-align:center;padding:60px;color:var(--muted)">Brak danych \u2014 najpierw zsynchronizuj</div>';
     return;
   }
-  var q=(document.getElementById('ai-search')?document.getElementById('ai-search').value:'').toLowerCase();
   var sf=document.getElementById('ai-filter-status')?document.getElementById('ai-filter-status').value:'';
+  var sortMode=document.getElementById('ai-sort')?document.getElementById('ai-sort').value:'alpha';
+
   var workers=getUniqueWorkers().filter(function(w){
-    if(q&&w.name.toLowerCase().indexOf(q)===-1) return false;
     if(sf==='crit'&&w.avgUph>=uphGoal*0.75) return false;
     if(sf==='warn'&&(w.avgUph<uphGoal*0.75||w.avgUph>=uphGoal)) return false;
     if(sf==='ok'&&w.avgUph<uphGoal) return false;
     return true;
   });
+
+  // Sort
+  if(sortMode==='alpha') {
+    workers.sort(function(a,b){return a.name.localeCompare(b.name,'pl');});
+  } else if(sortMode==='uph_asc') {
+    workers.sort(function(a,b){return a.avgUph-b.avgUph;});
+  } else {
+    workers.sort(function(a,b){return b.avgUph-a.avgUph;});
+  }
+
   var cnt=document.getElementById('ai-count');
-  if(cnt)cnt.textContent=workers.length+' pracowników';
+  if(cnt)cnt.textContent=workers.length+' pracownik\u00f3w';
+
   var html=workers.map(function(w){
     var sid=w.login.replace(/[^a-zA-Z0-9_-]/g,'_');
     var isOpen=aiExpanded.has(w.login);
@@ -174,6 +185,7 @@ function renderAITable() {
     var trend=delta>3?'<span style="color:var(--green)">&#9650;+'+delta+'</span>'
       :delta<-3?'<span style="color:var(--red)">&#9660;'+Math.abs(delta)+'</span>'
       :'<span style="color:var(--muted)">&mdash;</span>';
+
     var histRows=rows.slice().reverse().map(function(r){
       var h=history.find(function(h){return h.fileName===r.fileDate;});
       var dl=h?h.date:r.fileDate;
@@ -188,6 +200,7 @@ function renderAITable() {
         +'<td style="color:'+(r.noOfRejects>5?'var(--red)':r.noOfRejects>2?'var(--yellow)':'var(--muted)')+';font-size:11px;padding:6px 12px">'+r.noOfRejects+'</td>'
         +'</tr>';
     }).join('');
+
     var expandBlock=isOpen?(
       '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">'
       +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:3px;color:var(--muted);margin-bottom:8px">HISTORIA ZMIAN</div>'
@@ -205,7 +218,7 @@ function renderAITable() {
       +'<div style="font-family:IBM Plex Mono,monospace;font-size:9px;letter-spacing:3px;color:var(--purple)">ANALIZA AI</div>'
       +'<button id="ai-btn-'+sid+'" class="btn" onclick="event.stopPropagation();generateAI('+JSON.stringify(w.login)+')" '
       +'style="background:rgba(167,139,250,0.15);border:1px solid var(--purple);color:var(--purple);padding:7px 16px;font-size:10px">'
-      +(cached?'↻ Odśwież analizę':'&#129302; Generuj analizę AI')+'</button>'
+      +(cached?'\u21bb Od\u015bwie\u017c analiz\u0119':'&#129302; Generuj analiz\u0119 AI')+'</button>'
       +'</div>'
       +'<div id="ai-out-'+sid+'">'
       +(cached
@@ -213,26 +226,28 @@ function renderAITable() {
          +'<div style="font-size:12px;line-height:2.0">'+highlightAI(cached.text)+'</div>'
          +'<div style="font-size:9px;color:var(--muted);margin-top:8px;font-family:IBM Plex Mono,monospace">Wygenerowano: '+cached.ts+'</div>'
          +'</div>'
-        :'<div style="color:var(--muted);font-size:12px;padding:8px 0">Kliknij przycisk aby wygenerować analizę.</div>')
+        :'<div style="color:var(--muted);font-size:12px;padding:8px 0">Kliknij przycisk aby wygenerowa\u0107 analiz\u0119.</div>')
       +'</div></div></div>'
     ):'';
-    return '<div class="card" style="margin-bottom:8px;cursor:pointer" '
+
+    return '<div class="card" style="margin-bottom:6px;cursor:pointer;border-left:3px solid '+col+'" '
       +'onclick="toggleAIWorker('+JSON.stringify(w.login)+')">'
-      +'<div style="display:flex;align-items:center;gap:12px">'
-      +'<div style="font-size:14px;color:var(--muted);width:16px;flex-shrink:0;font-family:IBM Plex Mono,monospace">'+(isOpen?'&#9660;':'&#9654;')+'</div>'
+      +'<div style="display:flex;align-items:center;gap:14px">'
+      +'<div style="font-size:13px;color:var(--muted);width:16px;flex-shrink:0;font-family:IBM Plex Mono,monospace">'+(isOpen?'&#9660;':'&#9654;')+'</div>'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:14px;font-weight:700">'+w.name+'</div>'
       +'<div style="font-size:10px;color:var(--muted);margin-top:2px;font-family:IBM Plex Mono,monospace">'
       +w.shifts+' zmian &middot; '+w.totalPicked.toLocaleString('pl-PL')+' szt. &middot; trend: '+trend
-      +(cached?' &middot; <span style="color:var(--purple)">&#129302; przeanalizowany</span>':'')
+      +(cached?' &middot; <span style="color:var(--purple)">&#129302; OK</span>':'')
       +'</div></div>'
       +'<div style="text-align:right;flex-shrink:0">'
-      +'<div style="font-size:24px;font-weight:700;color:'+col+';font-family:IBM Plex Mono,monospace;line-height:1">'+w.avgUph+'</div>'
+      +'<div style="font-size:22px;font-weight:700;color:'+col+';font-family:IBM Plex Mono,monospace;line-height:1">'+w.avgUph+'</div>'
       +'<div style="font-size:9px;color:var(--muted)">UPH</div>'
       +'</div></div>'
       +expandBlock+'</div>';
   }).join('');
-  wrap.innerHTML=html||'<div style="color:var(--muted);padding:20px">Brak pracowników</div>';
+
+  wrap.innerHTML=html||'<div style="color:var(--muted);padding:20px">Brak pracownik\u00f3w dla wybranego filtra</div>';
 }
 
 </script>
@@ -823,23 +838,27 @@ tr.detail-row.hidden { display: none; }
 <!-- AI DIAGNOSIS -->
 <div class="panel" id="panel-ai">
   <div class="slabel" style="margin-top:0">DIAGNOZA AI — WSZYSCY PRACOWNICY</div>
-  <div style="background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--purple);padding:14px 20px;margin-bottom:16px">
+  <div style="background:var(--s1);border:1px solid var(--border);border-left:3px solid var(--purple);padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
     <div style="font-size:13px;color:var(--muted);line-height:1.7">
-      Kliknij wiersz pracownika aby rozwinąć historię zmian i uruchomić analizę AI.<br>
-      AI analizuje trend, trudności, porównuje do zespołu i proponuje konkretne działania.
+      Kliknij pracownika aby rozwinąć historię zmian i uruchomić analizę AI.
+    </div>
+    <div class="flex-row" style="gap:8px">
+      <select class="search-input" id="ai-filter-status" onchange="renderAITable()" style="width:auto">
+        <option value="">Wszyscy</option>
+        <option value="crit">Krytyczni (&lt;75% celu)</option>
+        <option value="warn">Słabi (75–99%)</option>
+        <option value="ok">Osiągają cel</option>
+      </select>
+      <select class="search-input" id="ai-sort" onchange="renderAITable()" style="width:auto">
+        <option value="alpha">Sortuj: A→Z</option>
+        <option value="uph_asc">Sortuj: UPH rosnąco</option>
+        <option value="uph_desc">Sortuj: UPH malejąco</option>
+      </select>
+      <span id="ai-count" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);line-height:2.4"></span>
     </div>
   </div>
-  <div class="flex-row" style="margin-bottom:12px;gap:8px">
-    <input class="search-input" id="ai-search" placeholder="Szukaj pracownika..." oninput="renderAITable()" />
-    <select class="search-input" id="ai-filter-status" onchange="renderAITable()" style="width:auto">
-      <option value="">Wszyscy</option>
-      <option value="crit">Krytyczni (&lt;75% celu)</option>
-      <option value="warn">Słabi (75–99%)</option>
-      <option value="ok">Osiągają cel</option>
-    </select>
-    <span id="ai-count" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-left:auto"></span>
-  </div>
   <div id="ai-table-wrap"></div>
+</div>
 </div>
 
 </main>
