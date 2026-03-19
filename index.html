@@ -473,19 +473,6 @@ tr.detail-row.hidden { display: none; }
   </div>
   <div class="slabel">HISTORIA IMPORTOW</div>
   <div id="import-history-list"><div style="color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:11px;padding:16px 0">Brak danych</div></div>
-  <div class="slabel" style="margin-top:24px">BACKUP</div>
-  <div style="background:var(--s1);border:1px solid var(--border);padding:18px 20px;">
-    <div class="flex-row" style="gap:10px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="exportBackup()">&#8595; EKSPORT JSON</button>
-      <div style="position:relative;display:inline-block">
-        <button class="btn btn-ghost" onclick="document.getElementById('restore-input').click()">&#8593; IMPORTUJ</button>
-        <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(event)" />
-      </div>
-      <button class="btn btn-danger" style="padding:9px 18px;font-size:10px" onclick="clearAllData()">&#10005; WYCZYSC</button>
-    </div>
-    <div id="backup-msg"></div>
-    <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-top:12px" id="storage-info"></div>
-  </div>
 </div><!-- /panel-import -->
 
 <!-- FULL TABLE -->
@@ -522,7 +509,7 @@ tr.detail-row.hidden { display: none; }
             <th>TREND</th>
             <th onclick="sortBy('quantityPicked')">PICKED ↕</th>
             <th onclick="sortBy('actualDirectTime')">DIRECT TIME</th>
-                        <th onclick="sortBy('daysSinceHired')">STAŻ ↕</th>
+            <th onclick="sortBy('daysSinceHired')">STAŻ ↕</th>
             <th>STATUS</th>
           </tr>
         </thead>
@@ -706,10 +693,12 @@ async function loadAllFromDrive(){
       var result=parseSingleCSV({name:file.name},csvText);
       if(result.skipped){skipped++;continue;}
       history.push({date:result.dateStr,shift:result.shift,data:result.parsed,avg:result.avg,fileName:file.name,driveFileId:file.id});
-      allData=allData.concat(result.parsed);
       loaded++;
     }catch(e){errors.push(file.name+": "+e.message);}
   }
+  // Rebuild allData cleanly from history — no duplicates
+  allData = [];
+  history.forEach(function(h){ allData = allData.concat(h.data); });
   sortHistory();saveToStorage();
   if(history.length)setActiveShift(history[history.length-1].shift);
   renderImportHistory();populateDateFilter();
@@ -777,8 +766,7 @@ function saveToStorage() {
   try {
     const payload = JSON.stringify({ history, uphGoal, savedAt: new Date().toISOString() });
     localStorage.setItem(STORAGE_KEY, payload);
-    updateStorageInfo();
-  } catch(e) {
+      } catch(e) {
     console.warn('localStorage save failed:', e);
   }
 }
@@ -791,10 +779,17 @@ function loadFromStorage() {
     if (!payload.history || !Array.isArray(payload.history)) return false;
     history = payload.history;
     uphGoal = payload.uphGoal || 65;
-    // Rebuild allData from history
+    // Deduplicate history by fileName (keep last occurrence)
+    const seen = {};
+    history = history.filter(h => {
+      const key = h.fileName + "|" + h.shift;
+      if (seen[key]) return false;
+      seen[key] = true;
+      return true;
+    });
+    // Rebuild allData cleanly from deduplicated history
     allData = [];
     history.forEach(h => allData = allData.concat(h.data));
-    // Sort history by date ascending
     sortHistory();
     return true;
   } catch(e) {
@@ -803,17 +798,7 @@ function loadFromStorage() {
   }
 }
 
-function updateStorageInfo() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) { document.getElementById('storage-info').textContent = 'Brak zapisanych danych'; return; }
-    const kb = (raw.length * 2 / 1024).toFixed(1);
-    const payload = JSON.parse(raw);
-    const saved = payload.savedAt ? new Date(payload.savedAt).toLocaleString('pl-PL') : '—';
-    document.getElementById('storage-info').textContent =
-      `Zapisano: ${saved} · Rozmiar: ${kb} KB · ${history.length} zmian w bazie`;
-  } catch(e) {}
-}
+
 
 function sortHistory() {
   // Sort by date extracted from filename (YYYYMMDD), then by shift (day before night)
@@ -834,47 +819,9 @@ function extractDateSortKey(filename) {
 // ============================================================
 // BACKUP / RESTORE / CLEAR
 // ============================================================
-function exportBackup() {
-  const payload = JSON.stringify({ history, uphGoal, exportedAt: new Date().toISOString(), version: 1 }, null, 2);
-  const blob = new Blob([payload], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const date = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  a.href = url; a.download = `uph-tracker-backup-${date}.json`;
-  a.click(); URL.revokeObjectURL(url);
-  showMsg('backup-msg', '✓ Backup pobrany', 'ok');
-}
 
-function importBackup(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const payload = JSON.parse(e.target.result);
-      if (!payload.history || !Array.isArray(payload.history)) throw new Error('Nieprawidłowy format pliku backup');
-      history = payload.history;
-      uphGoal = payload.uphGoal || 65;
-      allData = [];
-      history.forEach(h => allData = allData.concat(h.data));
-      sortHistory();
-      saveToStorage();
-      document.getElementById('uph-goal-input').value = uphGoal;
-      // Activate last shift
-      if (history.length) setActiveShift(history[history.length-1].shift);
-      renderImportHistory(); populateDateFilter();
-      document.getElementById('no-data-msg').style.display = allData.length ? 'none' : 'block';
-      document.getElementById('dashboard-content').style.display = allData.length ? 'block' : 'none';
-      updateShiftDateInfo();
-      refreshDashboard(); refreshDiagnosis();
-      showMsg('backup-msg', `✓ Przywrócono ${history.length} zmian z backupu`, 'ok');
-    } catch(err) {
-      showMsg('backup-msg', '✗ Błąd: ' + err.message, 'err');
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
+
+
 
 function clearAllData() {
   if (!confirm('Usunąć wszystkie dane? Tej operacji nie można cofnąć.')) return;
@@ -891,8 +838,7 @@ function clearAllData() {
   document.getElementById('h-pickers').textContent = '—';
   document.getElementById('h-total').textContent = '—';
   document.getElementById('diag-output').innerHTML = '<div class="diag-card info"><div class="diag-title">ℹ Brak danych</div><div class="diag-body">Wgraj scorecard CSV, aby zobaczyć diagnozę.</div></div>';
-  updateStorageInfo();
-  showMsg('backup-msg', '✓ Wszystkie dane usunięte', 'ok');
+    showMsg('backup-msg', '✓ Wszystkie dane usunięte', 'ok');
 }
 
 function updateGoal() {
@@ -970,8 +916,7 @@ function processFiles(files) {
             skipped++;
           } else {
             history.push({ date: result.dateStr, shift: result.shift, data: result.parsed, avg: result.avg, fileName: file.name });
-            allData = allData.filter(r => !(r.shift === result.shift && r.fileDate === file.name));
-            allData = allData.concat(result.parsed);
+            // allData rebuilt after all files processed
             loaded++;
           }
         }
@@ -1424,7 +1369,7 @@ function filterTable() {
           <table>
             <thead><tr>
               <th>DATA</th><th>ZMIANA</th><th>UPH</th>
-              <th>PICKED</th><th>DIRECT TIME</th><th>REJECTS</th><th>STAŻ</th><th>STATUS</th>
+              <th>PICKED</th><th>DIRECT TIME</th><th>STAŻ</th><th>STATUS</th>
             </tr></thead>
             <tbody>
               ${rows.map(r => {
@@ -1439,7 +1384,6 @@ function filterTable() {
                   <td style="color:${uphColor(r.uph)};font-weight:700;font-family:'IBM Plex Mono',monospace">${r.uph}</td>
                   <td style="font-family:'IBM Plex Mono',monospace">${r.quantityPicked.toLocaleString()}</td>
                   <td style="font-family:'IBM Plex Mono',monospace;color:${rShort?'var(--orange)':'var(--muted)'}${rShort?';font-weight:700':''}">${r.actualDirectTime}${rShort?' ⚑':''}</td>
-                  
                   <td style="color:var(--muted)">${r.daysSinceHired}d</td>
                   <td>${r.quantityPicked<50?'<span class="badge warn">FUNKCYJNY</span>':rShort?'<span class="badge warn">KRÓTKI CZAS</span>':uphBadge(r.uph)}</td>
                 </tr>`;
@@ -1793,20 +1737,25 @@ setupDragDrop();
 (function init() {
   const loaded = loadFromStorage();
   if (loaded && history.length) {
-    // Restore goal input
     document.getElementById('uph-goal-input').value = uphGoal;
-    // Activate last shift in history
     const lastShift = history[history.length - 1].shift;
     setActiveShift(lastShift);
     renderImportHistory();
     populateDateFilter();
     document.getElementById('no-data-msg').style.display = 'none';
     document.getElementById('dashboard-content').style.display = 'block';
-    updateShiftDateInfo();
   }
-  updateStorageInfo();
-  
+  // Auto-sync: check Drive for new files after page load
+  // Already-loaded files are skipped automatically (dedup by fileName)
+  setTimeout(syncFromDrive, 500);
 })();
+
+
+
+
+
+
+
 
 </script>
 </body>
